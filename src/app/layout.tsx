@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { PostHogProvider } from "./provider";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default function RootLayout({
       >
         <PostHogProvider>
           {children}
+          <PwaInstallPrompt />
         </PostHogProvider>
         <script
           dangerouslySetInnerHTML={{
