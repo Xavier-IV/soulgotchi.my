@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { savePetState, saveLastInteraction } from '@/lib/storage';
+import { useActivityStore } from '@/store/activityStore';
 
 interface PetState {
   health: number;
@@ -9,12 +10,6 @@ interface PetState {
   age: number;
   name: string;
   emoji: string;
-  dhikrCounts: {
-    [key: string]: number;
-  };
-  prayerStatus: {
-    [key: string]: boolean;
-  };
   lastDecay: number;
 }
 
@@ -27,26 +22,15 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     age: 0,
     name: initialName,
     emoji: initialEmoji,
-    dhikrCounts: {
-      'Subhanallah': 0,
-      'Alhamdulillah': 0,
-      'Allahu Akbar': 0,
-      'Astaghfirullah': 0
-    },
-    prayerStatus: {
-      Fajr: false,
-      Dhuhr: false,
-      Asr: false,
-      Maghrib: false,
-      Isha: false,
-      Tahajjud: false
-    },
     lastDecay: Date.now()
   });
 
   const [lastInteraction, setLastInteraction] = useState<Date>(new Date());
   const [isAlive, setIsAlive] = useState<boolean>(true);
   const [decayTimer, setDecayTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  // Get activity store actions
+  const { performDhikr: activityPerformDhikr } = useActivityStore();
 
   // Increase age over time
   useEffect(() => {
@@ -126,80 +110,8 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     const now = new Date();
     setLastInteraction(now);
     
-    setPetState((prev) => {
-      // Increment the dhikr count for this specific type
-      const currentCount = prev.dhikrCounts[dhikrType] || 0;
-      const newCount = currentCount + 1;
-      
-      // Check if completing a set of 33 (Sunnah)
-      const isCompletingSet = newCount % 33 === 0 && newCount > 0;
-      
-      // Small balanced increases for each dhikr
-      let spiritualityIncrease = 0.5;
-      let happinessIncrease = 0.5;
-      let energyIncrease = 0.5;
-      let healthIncrease = 0.5;
-      
-      // Small type-specific bonus
-      switch (dhikrType) {
-        case 'Subhanallah':
-          spiritualityIncrease += 0.5;
-          break;
-        case 'Alhamdulillah':
-          happinessIncrease += 0.5;
-          break;
-        case 'Allahu Akbar':
-          energyIncrease += 0.5;
-          break;
-        case 'Astaghfirullah':
-          healthIncrease += 0.5;
-          break;
-      }
-      
-      // Moderate bonus for completing a set of 33 (Sunnah reward)
-      if (isCompletingSet) {
-        // Balanced bonus for completing a full set
-        spiritualityIncrease += 3;
-        happinessIncrease += 3;
-        energyIncrease += 3;
-        healthIncrease += 3;
-        
-        // Small additional type-specific bonus
-        switch (dhikrType) {
-          case 'Subhanallah':
-            spiritualityIncrease += 2;
-            break;
-          case 'Alhamdulillah':
-            happinessIncrease += 2;
-            break;
-          case 'Allahu Akbar':
-            energyIncrease += 2;
-            break;
-          case 'Astaghfirullah':
-            healthIncrease += 2;
-            break;
-        }
-      }
-      
-      // Update dhikr counts
-      const newDhikrCounts = {
-        ...prev.dhikrCounts,
-        [dhikrType]: newCount
-      };
-      
-      // Apply the benefits
-      return {
-        ...prev,
-        spirituality: Math.min(100, prev.spirituality + spiritualityIncrease),
-        happiness: Math.min(100, prev.happiness + happinessIncrease),
-        energy: Math.min(100, prev.energy + energyIncrease),
-        health: Math.min(100, prev.health + healthIncrease),
-        dhikrCounts: newDhikrCounts,
-        lastDecay: Date.now() // Reset decay timer when interacting
-      };
-    });
-    
-    return true; // Return success
+    // Use activity store to handle dhikr
+    activityPerformDhikr(dhikrType);
   };
 
   const pray = () => {
@@ -269,20 +181,6 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
       age: 0,
       name: newName,
       emoji: initialEmoji,
-      dhikrCounts: {
-        'Subhanallah': 0,
-        'Alhamdulillah': 0,
-        'Allahu Akbar': 0,
-        'Astaghfirullah': 0
-      },
-      prayerStatus: {
-        Fajr: false,
-        Dhuhr: false,
-        Asr: false,
-        Maghrib: false,
-        Isha: false,
-        Tahajjud: false
-      },
       lastDecay: Date.now()
     });
     setIsAlive(true);

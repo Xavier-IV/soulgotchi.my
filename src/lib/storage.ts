@@ -6,12 +6,6 @@ interface PetState {
   age: number;
   name: string;
   emoji: string;
-  dhikrCounts?: {
-    [key: string]: number;
-  };
-  prayerStatus?: {
-    [key: string]: boolean;
-  };
 }
 
 const STORAGE_KEY = 'soulgotchi-pet-state';

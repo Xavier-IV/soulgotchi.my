@@ -8,19 +8,13 @@ import { useFocusStore } from '@/store/focusStore';
 import { useActivityStore } from '@/store/activityStore';
 
 interface ActionsProps {
-  onPerformDhikr: (dhikrType: string) => void;
   onPray: () => void;
   onLearn: () => void;
-  dhikrCounts?: {
-    [key: string]: number;
-  };
 }
 
 export function Actions({ 
-  onPerformDhikr, 
   onPray, 
   onLearn,
-  dhikrCounts = {},
 }: ActionsProps) {
   const [activeTab, setActiveTab] = useState('dhikr');
   const [showActionMessage, setShowActionMessage] = useState(false);
@@ -44,8 +38,9 @@ export function Actions({
 
   // Get activity state from Zustand store
   const {
-    prayerStatus,
+    dhikrCounts,
     blockedDhikr,
+    prayerStatus,
     lastActionMessage,
     performDhikr,
     completePrayer,
@@ -100,7 +95,6 @@ export function Actions({
     
     vibrate();
     performDhikr(dhikrType);
-    onPerformDhikr(dhikrType);
     const count = (dhikrCounts[dhikrType] || 0) + 1;
     updateActionMessage(`Recited: ${dhikrType} (${count}x)`);
     

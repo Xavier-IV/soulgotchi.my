@@ -70,11 +70,6 @@ export default function Home() {
     setPetName('SoulGotchi');
   };
 
-  // Handle dhikr with specific type
-  const handleDhikr = (dhikrType: string) => {
-    actions.performDhikr(dhikrType);
-  };
-
   // Game info tooltip content
   const gameInfoContent = (
     <div className="max-w-xs space-y-1 text-xs text-white">
@@ -304,10 +299,8 @@ export default function Home() {
         />
         
         <Actions
-          onPerformDhikr={handleDhikr}
           onPray={actions.pray}
           onLearn={actions.learn}
-          dhikrCounts={petState.dhikrCounts}
         />
         
         <div className="text-center">
