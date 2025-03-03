@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Pet } from '@/components/Pet';
 import { Actions } from '@/components/Actions';
 import { Button } from '@/components/ui/button';
@@ -23,11 +23,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { InfoIcon, TrophyIcon } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 export default function Home() {
   const [petName, setPetName] = useState('SoulGotchi');
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState('🥺');
+  const [resetDrawerOpen, setResetDrawerOpen] = useState(false);
+  const [resetProgress, setResetProgress] = useState(0);
+  const [isHoldingReset, setIsHoldingReset] = useState(false);
+  const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const emojiOptions = [
     { emoji: '🥺', description: 'Pleading' },
@@ -68,6 +73,63 @@ export default function Home() {
   const handleReset = () => {
     setIsSetupComplete(false);
     setPetName('SoulGotchi');
+  };
+
+  // Function to reset all data
+  const handleResetAllData = () => {
+    // Clear all localStorage data
+    localStorage.clear();
+    
+    // Reset pet state
+    actions.resetPet();
+    
+    // Close the drawer
+    setResetDrawerOpen(false);
+    
+    // Reset the progress
+    setResetProgress(0);
+    setIsHoldingReset(false);
+    
+    // Reload the page to ensure all stores are reset
+    window.location.reload();
+  };
+  
+  // Handle hold to reset
+  const handleResetStart = () => {
+    setIsHoldingReset(true);
+    setResetProgress(0);
+    
+    // Clear any existing timer
+    if (resetTimerRef.current) {
+      clearInterval(resetTimerRef.current);
+    }
+    
+    // Start a timer to increment progress
+    const startTime = Date.now();
+    const duration = 3000; // 3 seconds to hold
+    
+    resetTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min(100, (elapsed / duration) * 100);
+      setResetProgress(newProgress);
+      
+      if (newProgress >= 100) {
+        // Reset all data when progress is complete
+        handleResetAllData();
+        clearInterval(resetTimerRef.current!);
+      }
+    }, 100);
+  };
+  
+  const handleResetEnd = () => {
+    setIsHoldingReset(false);
+    setResetProgress(0);
+    
+    // Clear the timer
+    if (resetTimerRef.current) {
+      clearInterval(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
   };
 
   // Game info tooltip content
@@ -152,9 +214,14 @@ export default function Home() {
           <div className="text-6xl my-4">
             <span role="img" aria-label="Deceased pet">💫</span>
           </div>
-          <Button onClick={handleReset} className="w-full h-8 text-sm">
-            Start Again
-          </Button>
+          <div className="text-center flex justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleReset} className="h-7 text-xs">
+              Reset Pet
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setResetDrawerOpen(true)} className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10">
+              Reset All Data
+            </Button>
+          </div>
         </Card>
       </main>
     );
@@ -303,12 +370,61 @@ export default function Home() {
           onLearn={actions.learn}
         />
         
-        <div className="text-center">
+        <div className="text-center flex justify-center gap-2">
           <Button variant="outline" size="sm" onClick={handleReset} className="h-7 text-xs">
             Reset Pet
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setResetDrawerOpen(true)} className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10">
+            Reset All Data
+          </Button>
         </div>
       </div>
+      
+      {/* Reset All Data Confirmation Drawer */}
+      <Drawer open={resetDrawerOpen} onOpenChange={setResetDrawerOpen}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Reset All Data</DrawerTitle>
+              <DrawerDescription>
+                This will delete all your progress, achievements, and settings. This action cannot be undone.
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="p-4 flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to reset all data and start fresh?
+              </p>
+              
+              <Button 
+                variant="destructive" 
+                className="relative overflow-hidden"
+                onMouseDown={handleResetStart}
+                onMouseUp={handleResetEnd}
+                onMouseLeave={handleResetEnd}
+                onTouchStart={handleResetStart}
+                onTouchEnd={handleResetEnd}
+                onTouchCancel={handleResetEnd}
+              >
+                <span className="relative z-10 flex items-center justify-center">
+                  {isHoldingReset 
+                    ? `Hold to confirm (${Math.round(resetProgress)}%)` 
+                    : 'Hold to confirm reset'}
+                </span>
+                
+                {/* Progress overlay */}
+                <div 
+                  className="absolute left-0 top-0 bottom-0 bg-background/20 transition-all"
+                  style={{ width: `${resetProgress}%` }}
+                />
+              </Button>
+              
+              <Button variant="outline" onClick={() => setResetDrawerOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </main>
   );
 }

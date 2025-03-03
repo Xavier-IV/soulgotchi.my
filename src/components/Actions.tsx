@@ -233,6 +233,66 @@ export function Actions({
     setDrawerOpen(true);
   };
 
+  // Add keyboard shortcut handling
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only process if not in an input field
+      if (e.target instanceof HTMLInputElement || 
+          e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Skip if drawer is open in focus mode
+      if (isDrawerOpen && focusedDhikr) {
+        // In focus mode, space triggers the focused dhikr
+        if (e.code === 'Space' && !e.repeat) {
+          e.preventDefault();
+          handleFocusedDhikr();
+        }
+        return;
+      }
+      
+      // Skip if any dhikr is blocked
+      if (blockedDhikr !== null) return;
+      
+      // Keyboard shortcuts for dhikr
+      switch (e.code) {
+        case 'Digit1':
+        case 'Numpad1':
+          e.preventDefault();
+          handleDhikr('Subhanallah');
+          break;
+        case 'Digit2':
+        case 'Numpad2':
+          e.preventDefault();
+          handleDhikr('Alhamdulillah');
+          break;
+        case 'Digit3':
+        case 'Numpad3':
+          e.preventDefault();
+          handleDhikr('Allahu Akbar');
+          break;
+        case 'Digit4':
+        case 'Numpad4':
+          e.preventDefault();
+          handleDhikr('Astaghfirullah');
+          break;
+        case 'Space':
+          // Space can be used for the last clicked dhikr
+          if (lastClickedDhikr && !e.repeat) {
+            e.preventDefault();
+            handleDhikr(lastClickedDhikr);
+          }
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [blockedDhikr, isDrawerOpen, focusedDhikr, lastClickedDhikr]);
+
   return (
     <Card className="w-full max-w-md mx-auto p-4">
       {/* Action message with fade effect */}
@@ -374,6 +434,11 @@ export function Actions({
                           </Button>
                         </div>
                       </div>
+                      
+                      {/* Keyboard shortcut hint for focus mode - hidden on mobile */}
+                      <div className="mt-3 text-xs text-center text-muted-foreground hidden sm:block">
+                        Press <kbd className="px-1 py-0.5 mx-1 bg-muted rounded border border-border">Space</kbd> to recite
+                      </div>
                     </>
                   ) : (
                     <div className="p-4 space-y-4">
@@ -404,7 +469,7 @@ export function Actions({
             Complete sets of 33 for greater rewards (Sunnah)
           </p>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            {dhikrList.map((dhikr) => {
+            {dhikrList.map((dhikr, index) => {
               const count = dhikrCounts[dhikr.name] || 0;
               const bonus = getDhikrBonus(dhikr.name);
               const progress = getDhikrProgress(dhikr.name);
@@ -425,7 +490,13 @@ export function Actions({
                     style={{ width: `${progress}%` }}
                   />
                   
-                  <span className="font-medium text-sm">{dhikr.name}</span>
+                  <div className="flex items-center sm:justify-between w-full justify-center">
+                    <span className="font-medium text-sm">{dhikr.name}</span>
+                    <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded border border-border hidden sm:inline-block">
+                      {index + 1}
+                    </kbd>
+                  </div>
+                  
                   <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                     <span>{currentInSet}/{dhikr.target}</span>
                     {bonus > 0 && (
@@ -445,6 +516,11 @@ export function Actions({
                 </Button>
               );
             })}
+          </div>
+
+          {/* Keyboard shortcuts hint - hidden on mobile */}
+          <div className="mt-3 text-xs text-center text-muted-foreground hidden sm:block">
+            <p>Keyboard shortcuts: <kbd className="px-1 py-0.5 mx-1 bg-muted rounded border border-border">1</kbd>-<kbd className="px-1 py-0.5 mx-1 bg-muted rounded border border-border">4</kbd> for dhikr, <kbd className="px-1 py-0.5 mx-1 bg-muted rounded border border-border">Space</kbd> for last used</p>
           </div>
         </TabsContent>
         
