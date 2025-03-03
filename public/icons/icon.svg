@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000000" rx="128" ry="128" />
+  <circle cx="256" cy="256" r="160" fill="#1a1a1a" />
+  <circle cx="256" cy="256" r="120" fill="#333333" />
+  
+  <!-- Stylized crescent moon symbol -->
+  <path d="M320 200 A 100 100 0 1 0 320 312 A 70 70 0 1 1 320 200" fill="#ffffff" />
+  
+  <!-- Eyes -->
+  <circle cx="210" cy="220" r="15" fill="#ffffff" />
+  <circle cx="300" cy="220" r="15" fill="#ffffff" />
+  
+  <!-- Smile -->
+  <path d="M200 280 Q 255 340 310 280" stroke="#ffffff" stroke-width="8" fill="none" />
+</svg> 
