@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +24,8 @@ export function Actions({
 }: ActionsProps) {
   const [activeTab, setActiveTab] = useState('dhikr');
   const [lastAction, setLastAction] = useState<string | null>(null);
+  const [showActionMessage, setShowActionMessage] = useState(false);
+  const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [prayerStatus, setPrayerStatus] = useState<Record<string, boolean>>({
     Fajr: false,
     Dhuhr: false,
@@ -45,105 +47,99 @@ export function Actions({
   useEffect(() => {
     savePrayerStatus(prayerStatus);
   }, [prayerStatus]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (actionTimeoutRef.current) {
+        clearTimeout(actionTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const dhikrList = [
-    { name: 'Subhanallah', translation: 'Glory be to Allah', benefit: 'Increases spirituality' },
-    { name: 'Alhamdulillah', translation: 'Praise be to Allah', benefit: 'Increases happiness' },
-    { name: 'Allahu Akbar', translation: 'Allah is the Greatest', benefit: 'Increases energy' },
-    { name: 'Astaghfirullah', translation: 'I seek forgiveness from Allah', benefit: 'Restores health' },
+    { name: 'Subhanallah', translation: 'Glory be to Allah', benefit: 'Small boost to all stats + spirituality', target: 33 },
+    { name: 'Alhamdulillah', translation: 'Praise be to Allah', benefit: 'Small boost to all stats + happiness', target: 33 },
+    { name: 'Allahu Akbar', translation: 'Allah is the Greatest', benefit: 'Small boost to all stats + energy', target: 33 },
+    { name: 'Astaghfirullah', translation: 'I seek forgiveness from Allah', benefit: 'Small boost to all stats + health', target: 33 }
   ];
 
-  const handleDhikr = (dhikr: string) => {
-    // Trigger subtle haptic feedback
-    vibrate();
+  // Update action message and handle timeout
+  const updateActionMessage = (message: string) => {
+    setLastAction(message);
+    setShowActionMessage(true);
     
-    onPerformDhikr(dhikr);
-    
-    // Get the current count for this dhikr
-    const currentCount = (dhikrCounts[dhikr] || 0) + 1;
-    
-    // Show count in the message
-    setLastAction(`Recited: ${dhikr} (${currentCount}x)`);
-    
-    // Clear the action message after 2 seconds
-    setTimeout(() => {
-      setLastAction(null);
-    }, 2000);
-  };
-  
-  const handlePray = (prayer: string) => {
-    // Trigger subtle haptic feedback
-    vibrate();
-    
-    // Toggle prayer status
-    const newStatus = !prayerStatus[prayer];
-    setPrayerStatus({
-      ...prayerStatus,
-      [prayer]: newStatus
-    });
-    
-    // Only call onPray if the prayer is being performed (not undone)
-    if (newStatus) {
-      onPray();
-      setLastAction(`Performed: ${prayer} prayer`);
-    } else {
-      setLastAction(`Undone: ${prayer} prayer`);
+    // Clear any existing timeout
+    if (actionTimeoutRef.current) {
+      clearTimeout(actionTimeoutRef.current);
     }
     
-    // Clear the action message after 2 seconds
-    setTimeout(() => {
-      setLastAction(null);
-    }, 2000);
+    // Set a new timeout to hide the message after 3 seconds
+    actionTimeoutRef.current = setTimeout(() => {
+      setShowActionMessage(false);
+    }, 3000);
+  };
+  
+  const handleDhikr = (dhikrType: string) => {
+    vibrate();
+    onPerformDhikr(dhikrType);
+    const count = (dhikrCounts[dhikrType] || 0) + 1;
+    updateActionMessage(`Recited: ${dhikrType} (${count}x)`);
+  };
+  
+  const handlePray = (prayerName: string) => {
+    vibrate();
+    onPray();
+    setPrayerStatus(prev => ({
+      ...prev,
+      [prayerName]: true
+    }));
+    updateActionMessage(`Completed ${prayerName} prayer`);
   };
   
   const handleRest = () => {
-    // Trigger subtle haptic feedback
     vibrate();
-    
     onRest();
-    setLastAction('Resting...');
-    
-    // Clear the action message after 2 seconds
-    setTimeout(() => {
-      setLastAction(null);
-    }, 2000);
+    updateActionMessage('Rested and regained energy');
   };
   
   const handleLearn = (topic: string) => {
-    // Trigger subtle haptic feedback
     vibrate();
-    
     onLearn();
-    setLastAction(`Learning: ${topic}`);
-    
-    // Clear the action message after 2 seconds
-    setTimeout(() => {
-      setLastAction(null);
-    }, 2000);
+    updateActionMessage(`Studied: ${topic}`);
   };
-
-  // Calculate the bonus for a dhikr based on count
-  const getDhikrBonus = (dhikrName: string) => {
-    const count = dhikrCounts[dhikrName] || 0;
-    return Math.min(10, Math.floor(count / 10)); // Max bonus of 10
-  };
-
-  // Handle tab change with haptic feedback
+  
   const handleTabChange = (value: string) => {
     vibrate();
     setActiveTab(value);
   };
+  
+  // Calculate dhikr progress and bonuses
+  const getDhikrProgress = (dhikrType: string) => {
+    const count = dhikrCounts[dhikrType] || 0;
+    const dhikr = dhikrList.find(d => d.name === dhikrType);
+    if (!dhikr) return 0;
+    
+    // Calculate progress as a percentage of target (33)
+    const progress = Math.min(100, Math.floor((count % dhikr.target) / dhikr.target * 100));
+    return progress;
+  };
+  
+  const getDhikrBonus = (dhikrType: string) => {
+    const count = dhikrCounts[dhikrType] || 0;
+    // Calculate how many complete sets of 33 have been done
+    const completeSets = Math.floor(count / 33);
+    return completeSets;
+  };
 
   return (
-    <Card className="w-full max-w-md mx-auto p-3">
-      {/* Fixed height container for action messages to prevent layout shift */}
-      <div className="h-8 flex items-center justify-center mb-1">
-        {lastAction ? (
-          <div className="bg-primary/10 text-primary text-center py-1 px-3 rounded-md w-full text-xs">
+    <Card className="w-full max-w-md mx-auto p-4">
+      {/* Action message with fade effect */}
+      <div className="h-8 mb-2 flex items-center justify-center">
+        {lastAction && (
+          <div className={`text-sm text-center transition-opacity duration-500 ${showActionMessage ? 'opacity-100' : 'opacity-0'}`}>
             {lastAction}
           </div>
-        ) : (
-          <div className="h-6"></div>
         )}
       </div>
       
@@ -160,30 +156,49 @@ export function Actions({
           <TabsTrigger value="learn" className="text-xs">Learn</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="dhikr" className="mt-2">
+        <TabsContent value="dhikr" className="mt-2 min-h-[180px]">
           <h3 className="text-sm font-medium text-center">Perform Dhikr</h3>
+          <p className="text-xs text-center text-muted-foreground mt-1 mb-2">
+            Complete sets of 33 for greater rewards (Sunnah)
+          </p>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {dhikrList.map((dhikr) => {
               const count = dhikrCounts[dhikr.name] || 0;
               const bonus = getDhikrBonus(dhikr.name);
+              const progress = getDhikrProgress(dhikr.name);
+              const currentInSet = count % dhikr.target || 0;
               
               return (
                 <Button 
                   key={dhikr.name}
                   variant="outline" 
-                  className="h-auto min-h-12 py-2 flex flex-col"
+                  className="h-auto py-2 flex flex-col relative overflow-hidden"
                   onClick={() => handleDhikr(dhikr.name)}
                 >
+                  {/* Progress bar */}
+                  <div 
+                    className="absolute bottom-0 left-0 h-1 bg-primary/50 transition-all duration-300" 
+                    style={{ width: `${progress}%` }}
+                  />
+                  
                   <span className="font-medium text-sm">{dhikr.name}</span>
-                  <span className="text-xs text-muted-foreground">{count}x {bonus > 0 && `+${bonus}`}</span>
+                  <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                    <span>{currentInSet}/{dhikr.target}</span>
+                    {bonus > 0 && (
+                      <span className="text-amber-500 font-medium">{bonus} sets</span>
+                    )}
+                  </div>
                 </Button>
               );
             })}
           </div>
         </TabsContent>
         
-        <TabsContent value="prayer" className="mt-2">
+        <TabsContent value="prayer" className="mt-2 min-h-[180px]">
           <h3 className="text-sm font-medium text-center">Prayer</h3>
+          <p className="text-xs text-center text-muted-foreground mt-1 mb-2">
+            The main source of nourishment for your soul
+          </p>
           <div className="grid grid-cols-3 gap-2 mt-2">
             {Object.keys(prayerStatus).map((prayer) => (
               <Button 
@@ -201,7 +216,7 @@ export function Actions({
           </div>
         </TabsContent>
         
-        <TabsContent value="rest" className="mt-2">
+        <TabsContent value="rest" className="mt-2 min-h-[180px]">
           <h3 className="text-sm font-medium text-center">Rest</h3>
           <div className="flex justify-center mt-2">
             <Button 
@@ -214,7 +229,7 @@ export function Actions({
           </div>
         </TabsContent>
         
-        <TabsContent value="learn" className="mt-2">
+        <TabsContent value="learn" className="mt-2 min-h-[180px]">
           <h3 className="text-sm font-medium text-center">Learn</h3>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <Button variant="outline" className="h-12" onClick={() => handleLearn('Quran')}>Read Quran</Button>

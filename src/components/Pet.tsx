@@ -161,8 +161,16 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
 
   // Calculate progress towards goal
   const getProgressLabel = (value: number) => {
-    if (value >= 100) return "100%";
-    return `${value}%`;
+    const flooredValue = Math.floor(value);
+    if (flooredValue >= 100) return "100%";
+    return `${flooredValue}%`;
+  };
+
+  // Get progress bar color based on value
+  const getProgressColor = (value: number) => {
+    const flooredValue = Math.floor(value);
+    if (flooredValue >= 90) return "bg-gradient-to-r from-amber-300 to-yellow-500"; // Gold gradient for overachieving
+    return ""; // Default color
   };
 
   return (
@@ -190,35 +198,52 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
             <span>Health</span>
-            <span>{getProgressLabel(health)}</span>
+            <span className={Math.floor(health) >= 90 ? "font-semibold text-amber-500" : ""}>
+              {getProgressLabel(health)}
+            </span>
           </div>
-          <Progress value={health} className="h-2" />
+          <Progress value={Math.floor(health)} className={`h-2 ${getProgressColor(health)}`} />
         </div>
         
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
             <span>Spirituality</span>
-            <span>{getProgressLabel(spirituality)}</span>
+            <span className={Math.floor(spirituality) >= 90 ? "font-semibold text-amber-500" : ""}>
+              {getProgressLabel(spirituality)}
+            </span>
           </div>
-          <Progress value={spirituality} className="h-2" />
+          <Progress value={Math.floor(spirituality)} className={`h-2 ${getProgressColor(spirituality)}`} />
         </div>
         
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
             <span>Energy</span>
-            <span>{getProgressLabel(energy)}</span>
+            <span className={Math.floor(energy) >= 90 ? "font-semibold text-amber-500" : ""}>
+              {getProgressLabel(energy)}
+            </span>
           </div>
-          <Progress value={energy} className="h-2" />
+          <Progress value={Math.floor(energy)} className={`h-2 ${getProgressColor(energy)}`} />
         </div>
         
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
             <span>Happiness</span>
-            <span>{getProgressLabel(happiness)}</span>
+            <span className={Math.floor(happiness) >= 90 ? "font-semibold text-amber-500" : ""}>
+              {getProgressLabel(happiness)}
+            </span>
           </div>
-          <Progress value={happiness} className="h-2" />
+          <Progress value={Math.floor(happiness)} className={`h-2 ${getProgressColor(happiness)}`} />
         </div>
+      </div>
+      
+      {/* Always reserve space for mastery message to prevent layout shifts */}
+      <div className="h-5 text-center w-full">
+        {(Math.floor(health) >= 90 && Math.floor(spirituality) >= 90 && Math.floor(energy) >= 90 && Math.floor(happiness) >= 90) && (
+          <div className="text-xs text-amber-500 font-medium animate-pulse">
+            ✨ Mastery Level Achieved ✨
+          </div>
+        )}
       </div>
     </Card>
   );
-} 
+}

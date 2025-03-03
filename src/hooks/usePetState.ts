@@ -8,6 +8,7 @@ interface PetState {
   happiness: number;
   age: number;
   name: string;
+  emoji: string;
   dhikrCounts: {
     [key: string]: number;
   };
@@ -17,7 +18,7 @@ interface PetState {
   lastDecay: number;
 }
 
-export function usePetState(initialName: string = 'SoulGatchi') {
+export function usePetState(initialName: string = 'SoulGatchi', initialEmoji: string = '😌') {
   const [petState, setPetState] = useState<PetState>({
     health: 20,
     spirituality: 20,
@@ -25,6 +26,7 @@ export function usePetState(initialName: string = 'SoulGatchi') {
     happiness: 20,
     age: 0,
     name: initialName,
+    emoji: initialEmoji,
     dhikrCounts: {
       'Subhanallah': 0,
       'Alhamdulillah': 0,
@@ -129,30 +131,54 @@ export function usePetState(initialName: string = 'SoulGatchi') {
       const currentCount = prev.dhikrCounts[dhikrType] || 0;
       const newCount = currentCount + 1;
       
-      // Calculate bonus based on repetition count
-      // More repetitions = more benefit
-      const repetitionBonus = Math.min(10, Math.floor(newCount / 10)); // Max bonus of 10
+      // Check if completing a set of 33 (Sunnah)
+      const isCompletingSet = newCount % 33 === 0 && newCount > 0;
       
-      // Different dhikr types provide different benefits
-      // Reduced spirituality increase rates
-      let spiritualityIncrease = 1 + Math.floor(repetitionBonus / 2);
-      let happinessIncrease = 1 + Math.floor(repetitionBonus / 2);
-      let energyIncrease = 0;
-      let healthIncrease = 0;
+      // Small balanced increases for each dhikr
+      let spiritualityIncrease = 0.5;
+      let happinessIncrease = 0.5;
+      let energyIncrease = 0.5;
+      let healthIncrease = 0.5;
       
+      // Small type-specific bonus
       switch (dhikrType) {
         case 'Subhanallah':
-          spiritualityIncrease += 1; // Reduced from 3 to 1
+          spiritualityIncrease += 0.5;
           break;
         case 'Alhamdulillah':
-          happinessIncrease += 3; // Focuses on happiness
+          happinessIncrease += 0.5;
           break;
         case 'Allahu Akbar':
-          energyIncrease += 3; // Provides energy
+          energyIncrease += 0.5;
           break;
         case 'Astaghfirullah':
-          healthIncrease += 3; // Restores health
+          healthIncrease += 0.5;
           break;
+      }
+      
+      // Moderate bonus for completing a set of 33 (Sunnah reward)
+      if (isCompletingSet) {
+        // Balanced bonus for completing a full set
+        spiritualityIncrease += 3;
+        happinessIncrease += 3;
+        energyIncrease += 3;
+        healthIncrease += 3;
+        
+        // Small additional type-specific bonus
+        switch (dhikrType) {
+          case 'Subhanallah':
+            spiritualityIncrease += 2;
+            break;
+          case 'Alhamdulillah':
+            happinessIncrease += 2;
+            break;
+          case 'Allahu Akbar':
+            energyIncrease += 2;
+            break;
+          case 'Astaghfirullah':
+            healthIncrease += 2;
+            break;
+        }
       }
       
       // Update dhikr counts
@@ -185,9 +211,10 @@ export function usePetState(initialName: string = 'SoulGatchi') {
     setPetState((prev) => {
       const newState = {
         ...prev,
-        spirituality: Math.min(100, prev.spirituality + 8), // Reduced from 15 to 8
-        energy: Math.min(100, prev.energy + 10),
-        health: Math.min(100, prev.health + 5),
+        spirituality: Math.min(100, prev.spirituality + 15), // Primary benefit
+        happiness: Math.min(100, prev.happiness + 10),
+        energy: Math.min(100, prev.energy + 8),
+        health: Math.min(100, prev.health + 8),
         lastDecay: Date.now() // Reset decay timer when interacting
       };
       return newState;
@@ -241,6 +268,7 @@ export function usePetState(initialName: string = 'SoulGatchi') {
       happiness: 20,
       age: 0,
       name: newName,
+      emoji: initialEmoji,
       dhikrCounts: {
         'Subhanallah': 0,
         'Alhamdulillah': 0,
