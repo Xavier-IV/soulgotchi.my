@@ -1,0 +1,82 @@
+---
+description: 
+globs: *
+alwaysApply: false
+---
+# SoulGatchi.my - Islamic Virtual Pet
+
+## Project Overview
+SoulGatchi is an Islamic virtual pet web application that grows with the user's Islamic practices. The pet's health, spirituality, energy, and happiness are influenced by the user's religious activities like prayer, dhikr (remembrance of Allah), and learning.
+
+## Core Mechanics
+
+### Pet Stats
+- **Health**: Physical wellbeing of the pet
+- **Spirituality**: Spiritual connection and faith
+- **Energy**: Activity level and vitality
+- **Happiness**: Emotional wellbeing
+
+Stats range from 0-100 and are displayed as progress bars. Values ≥90 are highlighted in amber and trigger a "Mastery Level" achievement when all stats reach this threshold.
+
+### Activities
+1. **Prayer**: The main source of nourishment for the soul
+   - Five daily prayers (Fajr, Dhuhr, Asr, Maghrib, Isha)
+   - Provides significant boosts to spirituality (+15), happiness (+10), energy (+8), and health (+8)
+
+2. **Dhikr**: Supplementary spiritual practice
+   - Types: SubhanAllah, Alhamdulillah, Allahu Akbar, Astaghfirullah
+   - Each provides a small boost (+0.5) to all stats with an additional +0.5 to its primary stat
+   - Completing a set of 33 grants +3 to all stats and +2 to the primary stat
+   - Features a 2-second pause with haptic feedback when completing a set of 33
+
+3. **Rest**: Recovers energy
+
+4. **Learn**: Increases knowledge and spirituality
+
+### UI Components
+
+#### Pet Component
+- Displays the pet's mood (happy, content, sad, hungry, tired)
+- Shows all four stat bars with their values
+- Includes a stats button that opens a drawer with detailed information
+- Celebrates mood improvements with confetti animations
+
+#### Stats Drawer
+- **Pet Mood**: Shows pet emoji, mood description, and all stats
+- **Dhikr**: Displays dhikr counts with animated counters
+- **Prayer**: Shows prayer completion status for the day
+
+#### Achievements
+- Trophy icon displays number of achievements
+- Dialog shows detailed achievement list
+
+### Special Features
+1. **Animated Counters**: Dhikr counts use Big.js for precision and feature:
+   - Eased animation that slows dramatically near the target value
+   - Fixed-width digit display to prevent layout shifts
+   - 2-second total animation duration
+
+2. **Haptic Feedback**:
+   - Medium vibration for regular interactions
+   - Pattern vibration (three pulses) for completing dhikr sets
+
+3. **Blocking Mechanism**:
+   - 2-second pause after completing a dhikr set
+   - Overlay with "Set Complete!" message
+   - Prevents further interaction during this period
+
+4. **Visual Indicators**:
+   - Amber highlighting for high stats (≥90)
+   - Gold gradient for progress bars at high values
+   - Confetti animations for achievements and mood improvements
+
+## Technical Implementation
+- Next.js React application with TypeScript
+- Tailwind CSS for styling
+- shadcn/ui component library
+- Mobile-first design with responsive layouts
+- PWA capabilities for installation on devices
+- Have haptic feedback for better mobile experience
+
+## Design Philosophy
+The application balances Islamic principles with engaging game mechanics, emphasizing the five daily prayers as the foundation of faith while providing supplementary activities through dhikr. The design encourages consistent religious practice through a nurturing relationship with the virtual pet. 

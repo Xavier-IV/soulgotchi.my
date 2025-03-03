@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { vibrate } from '@/lib/haptics';
+import { vibrate, vibratePattern } from '@/lib/haptics';
 import { savePrayerStatus, loadPrayerStatus } from '@/lib/storage';
 
 interface ActionsProps {
@@ -26,6 +26,7 @@ export function Actions({
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [showActionMessage, setShowActionMessage] = useState(false);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [blockedDhikr, setBlockedDhikr] = useState<string | null>(null);
   const [prayerStatus, setPrayerStatus] = useState<Record<string, boolean>>({
     Fajr: false,
     Dhuhr: false,
@@ -81,10 +82,27 @@ export function Actions({
   };
   
   const handleDhikr = (dhikrType: string) => {
+    // If any dhikr is blocked, don't allow interaction
+    if (blockedDhikr !== null) return;
+    
     vibrate();
     onPerformDhikr(dhikrType);
     const count = (dhikrCounts[dhikrType] || 0) + 1;
     updateActionMessage(`Recited: ${dhikrType} (${count}x)`);
+    
+    // Check if completing a set of 33
+    if (count % 33 === 0) {
+      // Block this dhikr type
+      setBlockedDhikr(dhikrType);
+      
+      // Trigger pattern vibration for set completion
+      vibratePattern([100, 30, 100, 30, 100]); // Three vibrations with pauses
+      
+      // Unblock after 2 seconds
+      setTimeout(() => {
+        setBlockedDhikr(null);
+      }, 2000);
+    }
   };
   
   const handlePray = (prayerName: string) => {
@@ -167,6 +185,7 @@ export function Actions({
               const bonus = getDhikrBonus(dhikr.name);
               const progress = getDhikrProgress(dhikr.name);
               const currentInSet = count % dhikr.target || 0;
+              const isBlocked = blockedDhikr === dhikr.name;
               
               return (
                 <Button 
@@ -174,6 +193,7 @@ export function Actions({
                   variant="outline" 
                   className="h-auto py-2 flex flex-col relative overflow-hidden"
                   onClick={() => handleDhikr(dhikr.name)}
+                  disabled={isBlocked}
                 >
                   {/* Progress bar */}
                   <div 
@@ -188,6 +208,16 @@ export function Actions({
                       <span className="text-amber-500 font-medium">{bonus} sets</span>
                     )}
                   </div>
+                  
+                  {/* Overlay for blocked state */}
+                  {isBlocked && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
+                      <div className="text-center">
+                        <div className="text-sm font-semibold text-amber-500">Set Complete!</div>
+                        <div className="text-xs text-muted-foreground">Please wait...</div>
+                      </div>
+                    </div>
+                  )}
                 </Button>
               );
             })}
