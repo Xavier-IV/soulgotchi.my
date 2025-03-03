@@ -200,6 +200,15 @@ export function Actions({
     };
   }, []);
 
+  // Handle drawer open change - prevent closing when locked
+  const handleDrawerOpenChange = (open: boolean) => {
+    if (isLocked && !open) {
+      // If locked and trying to close, prevent closing
+      return;
+    }
+    setDrawerOpen(open);
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto p-4">
       {/* Action message with fade effect */}
@@ -226,14 +235,18 @@ export function Actions({
         <TabsContent value="dhikr" className="mt-2 min-h-[180px]">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium">Perform Dhikr</h3>
-            <Drawer open={isDrawerOpen} onOpenChange={setDrawerOpen}>
+            <Drawer 
+              open={isDrawerOpen} 
+              onOpenChange={handleDrawerOpenChange}
+              dismissible={false}
+            >
               <DrawerTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 px-2">
                   <span className="mr-1">Focus</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-target"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                 </Button>
               </DrawerTrigger>
-              <DrawerContent>
+              <DrawerContent data-vaul-no-drag={isLocked ? true : undefined}>
                 <DrawerHeader className="relative">
                   {focusedDhikr && (
                     <Button 
@@ -257,11 +270,12 @@ export function Actions({
                       {isLocked ? (
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock text-amber-500"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock-open"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock-open"><path d="M7 11V7a5 5 0 0 1 9.9-1"/><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/></svg>
                       )}
                     </Button>
                   )}
                 </DrawerHeader>
+                
                 <div className="p-4 flex flex-col items-center">
                   {focusedDhikr ? (
                     <>
