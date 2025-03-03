@@ -20,6 +20,7 @@ export function Actions({
   onPerformDhikr, 
   onPray, 
   onLearn,
+  dhikrCounts = {},
 }: ActionsProps) {
   const [activeTab, setActiveTab] = useState('dhikr');
   const [showActionMessage, setShowActionMessage] = useState(false);
@@ -27,6 +28,9 @@ export function Actions({
   const [closeProgress, setCloseProgress] = useState(0);
   const [isHoldingClose, setIsHoldingClose] = useState(false);
   const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [lastClickedDhikr, setLastClickedDhikr] = useState<string | null>(null);
+  const [isLockFlashing, setIsLockFlashing] = useState(false);
+  const lockFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Get focus state from Zustand store
   const { 
@@ -40,7 +44,6 @@ export function Actions({
 
   // Get activity state from Zustand store
   const {
-    dhikrCounts,
     prayerStatus,
     blockedDhikr,
     lastActionMessage,
@@ -55,6 +58,12 @@ export function Actions({
     return () => {
       if (actionTimeoutRef.current) {
         clearTimeout(actionTimeoutRef.current);
+      }
+      if (closeTimerRef.current) {
+        clearInterval(closeTimerRef.current);
+      }
+      if (lockFlashTimeoutRef.current) {
+        clearTimeout(lockFlashTimeoutRef.current);
       }
     };
   }, []);
@@ -85,6 +94,9 @@ export function Actions({
   const handleDhikr = (dhikrType: string) => {
     // If any dhikr is blocked, don't allow interaction
     if (blockedDhikr !== null) return;
+    
+    // Set this as the last clicked dhikr
+    setLastClickedDhikr(dhikrType);
     
     vibrate();
     performDhikr(dhikrType);
@@ -162,7 +174,7 @@ export function Actions({
     
     // Start a timer to increment progress
     const startTime = Date.now();
-    const duration = 3000; // 3 seconds to hold
+    const duration = 1000; // 1 second to hold
     
     closeTimerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -191,14 +203,23 @@ export function Actions({
     }
   };
   
-  // Clean up close timer on unmount
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) {
-        clearInterval(closeTimerRef.current);
+  // Handle lock flash effect
+  const handleLockFlash = () => {
+    if (isLocked) {
+      setIsLockFlashing(true);
+      vibrate();
+      
+      // Clear any existing timeout
+      if (lockFlashTimeoutRef.current) {
+        clearTimeout(lockFlashTimeoutRef.current);
       }
-    };
-  }, []);
+      
+      // Set a timeout to stop flashing after 1 second
+      lockFlashTimeoutRef.current = setTimeout(() => {
+        setIsLockFlashing(false);
+      }, 1000);
+    }
+  };
 
   // Handle drawer open change - prevent closing when locked
   const handleDrawerOpenChange = (open: boolean) => {
@@ -207,6 +228,15 @@ export function Actions({
       return;
     }
     setDrawerOpen(open);
+  };
+
+  // Handle opening the focus drawer
+  const handleOpenFocusDrawer = () => {
+    // If there's a last clicked dhikr, set it as the focused dhikr
+    if (lastClickedDhikr) {
+      setFocusedDhikr(lastClickedDhikr);
+    }
+    setDrawerOpen(true);
   };
 
   return (
@@ -238,10 +268,15 @@ export function Actions({
             <Drawer 
               open={isDrawerOpen} 
               onOpenChange={handleDrawerOpenChange}
-              dismissible={false}
+              dismissible={!isLocked}
             >
               <DrawerTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 px-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 px-2"
+                  onClick={handleOpenFocusDrawer}
+                >
                   <span className="mr-1">Focus</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-target"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
                 </Button>
@@ -253,8 +288,7 @@ export function Actions({
                       variant="ghost" 
                       size="icon" 
                       className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                      onClick={() => setFocusedDhikr(null)}
-                      disabled={isLocked}
+                      onClick={() => isLocked ? handleLockFlash() : setFocusedDhikr(null)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
                     </Button>
@@ -264,11 +298,11 @@ export function Actions({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 transition-all ${isLockFlashing ? 'animate-pulse bg-amber-500/20' : ''}`}
                       onClick={toggleLock}
                     >
                       {isLocked ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock text-amber-500"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-lock ${isLockFlashing ? 'text-amber-600' : 'text-amber-500'}`}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock-open"><path d="M7 11V7a5 5 0 0 1 9.9-1"/><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/></svg>
                       )}
@@ -292,7 +326,7 @@ export function Actions({
                       
                       <Button 
                         size="lg" 
-                        className="w-full h-24 text-xl"
+                        className="w-full h-32 text-xl"
                         onClick={handleFocusedDhikr}
                         disabled={blockedDhikr === focusedDhikr}
                       >
@@ -316,10 +350,10 @@ export function Actions({
                       <div className="mt-6 w-full">
                         <div 
                           className="relative w-full overflow-hidden rounded-md"
-                          onMouseDown={!isLocked ? handleCloseStart : undefined}
+                          onMouseDown={!isLocked ? handleCloseStart : handleLockFlash}
                           onMouseUp={!isLocked ? handleCloseEnd : undefined}
                           onMouseLeave={!isLocked ? handleCloseEnd : undefined}
-                          onTouchStart={!isLocked ? handleCloseStart : undefined}
+                          onTouchStart={!isLocked ? handleCloseStart : handleLockFlash}
                           onTouchEnd={!isLocked ? handleCloseEnd : undefined}
                           onTouchCancel={!isLocked ? handleCloseEnd : undefined}
                         >
@@ -327,6 +361,7 @@ export function Actions({
                             variant="outline" 
                             className="w-full relative"
                             disabled={isLocked}
+                            onClick={isLocked ? handleLockFlash : undefined}
                           >
                             <span className="relative z-10 flex items-center justify-center">
                               {isLocked && (
