@@ -3,10 +3,10 @@ description:
 globs: *
 alwaysApply: false
 ---
-# SoulGatchi.my - Islamic Virtual Pet
+# SoulGotchi.my - Islamic Virtual Pet
 
 ## Project Overview
-SoulGatchi is an Islamic virtual pet web application that grows with the user's Islamic practices. The pet's health, spirituality, energy, and happiness are influenced by the user's religious activities like prayer, dhikr (remembrance of Allah), and learning.
+SoulGotchi is an Islamic virtual pet web application that grows with the user's Islamic practices. The pet's health, spirituality, energy, and happiness are influenced by the user's religious activities like prayer, dhikr (remembrance of Allah), and learning.
 
 ## Core Mechanics
 

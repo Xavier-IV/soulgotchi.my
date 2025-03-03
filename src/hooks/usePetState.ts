@@ -18,7 +18,7 @@ interface PetState {
   lastDecay: number;
 }
 
-export function usePetState(initialName: string = 'SoulGatchi', initialEmoji: string = '😌') {
+export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: string = '😌') {
   const [petState, setPetState] = useState<PetState>({
     health: 20,
     spirituality: 20,

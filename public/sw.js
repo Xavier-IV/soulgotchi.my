@@ -1,4 +1,4 @@
-const CACHE_NAME = 'soulgatchi-v1';
+const CACHE_NAME = 'soulgotchi-v1';
 const urlsToCache = [
   '/',
   '/index.html',

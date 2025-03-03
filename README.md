@@ -1,6 +1,6 @@
-# SoulGatchi - Islamic Virtual Pet
+# SoulGotchi - Islamic Virtual Pet
 
-SoulGatchi is a minimalist Islamic-themed virtual pet web application inspired by the classic Tamagotchi. Instead of traditional feeding and playing, your virtual pet grows through Islamic practices like dhikr (remembrance of Allah), prayer, and learning.
+SoulGotchi is a minimalist Islamic-themed virtual pet web application inspired by the classic Tamagotchi. Instead of traditional feeding and playing, your virtual pet grows through Islamic practices like dhikr (remembrance of Allah), prayer, and learning.
 
 ## Features
 
@@ -45,7 +45,7 @@ SoulGatchi is a minimalist Islamic-themed virtual pet web application inspired b
 
 ## How to Play
 
-1. Name your SoulGatchi when you first start
+1. Name your SoulGotchi when you first start
 2. Grow your pet's health, spirituality, energy, and happiness by:
    - Performing dhikr (remembrance of Allah)
    - Praying the five daily prayers
@@ -58,7 +58,7 @@ SoulGatchi is a minimalist Islamic-themed virtual pet web application inspired b
 
 ## Dhikr Mechanic
 
-SoulGatchi features a special dhikr system that encourages repeated recitation:
+SoulGotchi features a special dhikr system that encourages repeated recitation:
 
 - Each type of dhikr provides different benefits:
   - **Subhanallah** (Glory be to Allah): Primarily increases spirituality
@@ -82,7 +82,7 @@ To simulate the need for consistent spiritual practice:
 
 ## Haptic Feedback
 
-On supported mobile devices, SoulGatchi provides subtle haptic feedback:
+On supported mobile devices, SoulGotchi provides subtle haptic feedback:
 
 - Gentle vibrations when tapping on buttons and tabs
 - Medium vibration when interacting directly with your pet
@@ -97,13 +97,13 @@ On supported mobile devices, SoulGatchi provides subtle haptic feedback:
 
 ## PWA Installation
 
-SoulGatchi can be installed as a Progressive Web App on your mobile device:
+SoulGotchi can be installed as a Progressive Web App on your mobile device:
 
 1. Open the website in your mobile browser
 2. For iOS: Tap the Share button, then "Add to Home Screen"
 3. For Android: Tap the menu button, then "Add to Home Screen" or "Install App"
 
-Once installed, SoulGatchi can be used offline and will appear as an app on your device.
+Once installed, SoulGotchi can be used offline and will appear as an app on your device.
 
 ## License
 

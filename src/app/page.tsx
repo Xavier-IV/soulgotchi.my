@@ -25,7 +25,7 @@ import {
 import { InfoIcon, TrophyIcon } from 'lucide-react';
 
 export default function Home() {
-  const [petName, setPetName] = useState('SoulGatchi');
+  const [petName, setPetName] = useState('SoulGotchi');
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState('🥺');
   
@@ -57,7 +57,7 @@ export default function Home() {
   // Handle pet setup
   const handleSetupPet = () => {
     if (petName.trim() === '') {
-      setPetName('SoulGatchi');
+      setPetName('SoulGotchi');
     }
     
     actions.resetPet(petName);
@@ -67,7 +67,7 @@ export default function Home() {
   // Handle pet death or reset
   const handleReset = () => {
     setIsSetupComplete(false);
-    setPetName('SoulGatchi');
+    setPetName('SoulGotchi');
   };
 
   // Handle dhikr with specific type
@@ -78,7 +78,7 @@ export default function Home() {
   // Game info tooltip content
   const gameInfoContent = (
     <div className="max-w-xs space-y-1 text-xs text-white">
-      <h3 className="font-medium">How to Play SoulGatchi</h3>
+      <h3 className="font-medium">How to Play SoulGotchi</h3>
       <ul className="list-disc pl-3 space-y-0.5">
         <li>Perform Islamic practices to grow your pet&apos;s stats</li>
         <li>Each dhikr type provides different benefits</li>
@@ -97,7 +97,7 @@ export default function Home() {
       <main className="flex min-h-screen flex-col items-start justify-center p-2 bg-background">
         <Card className="w-full max-w-md mx-auto p-4 space-y-4">
           <div className="space-y-1 text-center">
-            <h1 className="text-xl font-bold">Welcome to SoulGatchi</h1>
+            <h1 className="text-xl font-bold">Welcome to SoulGotchi</h1>
             <p className="text-xs text-muted-foreground">
               Your Islamic virtual pet that grows with your spiritual practices
             </p>
@@ -106,7 +106,7 @@ export default function Home() {
           <div className="space-y-3">
             <div className="space-y-1">
               <label htmlFor="pet-name" className="text-xs font-medium">
-                Name your SoulGatchi
+                Name your SoulGotchi
               </label>
               <Input
                 id="pet-name"
@@ -150,7 +150,7 @@ export default function Home() {
     return (
       <main className="flex min-h-screen flex-col items-start justify-center p-2 bg-background">
         <Card className="w-full max-w-md mx-auto p-4 space-y-4 text-center">
-          <h1 className="text-xl font-bold">Your SoulGatchi has passed away</h1>
+          <h1 className="text-xl font-bold">Your SoulGotchi has passed away</h1>
           <p className="text-xs text-muted-foreground">
             {petName} lived for {petState.age} hours and has returned to Allah.
           </p>
@@ -251,7 +251,7 @@ export default function Home() {
                 <DialogHeader>
                   <DialogTitle>Achievements</DialogTitle>
                   <DialogDescription>
-                    Your SoulGatchi&apos;s accomplishments
+                    Your SoulGotchi&apos;s accomplishments
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2">
@@ -271,7 +271,7 @@ export default function Home() {
                   
                   {hasMaxStats && (
                     <p className="text-sm text-primary font-medium mt-2">
-                      Mastery Achieved! Continue nurturing your SoulGatchi&apos;s journey.
+                      Mastery Achieved! Continue nurturing your SoulGotchi&apos;s journey.
                     </p>
                   )}
                 </div>
@@ -306,7 +306,6 @@ export default function Home() {
         <Actions
           onPerformDhikr={handleDhikr}
           onPray={actions.pray}
-          onRest={actions.rest}
           onLearn={actions.learn}
           dhikrCounts={petState.dhikrCounts}
         />

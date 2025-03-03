@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SoulGatchi - Islamic Virtual Pet",
+  title: "SoulGotchi - Islamic Virtual Pet",
   description: "A virtual pet that grows with your Islamic practices",
   manifest: "/manifest.json",
   themeColor: "#000000",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SoulGatchi",
+    title: "SoulGotchi",
   },
 };
 

@@ -14,9 +14,9 @@ interface PetState {
   };
 }
 
-const STORAGE_KEY = 'soulgatchi-pet-state';
-const LAST_INTERACTION_KEY = 'soulgatchi-last-interaction';
-const PRAYER_STATUS_KEY = 'soulgatchi-prayer-status';
+const STORAGE_KEY = 'soulgotchi-pet-state';
+const LAST_INTERACTION_KEY = 'soulgotchi-last-interaction';
+const PRAYER_STATUS_KEY = 'soulgotchi-prayer-status';
 
 export function savePetState(petState: PetState): void {
   if (typeof window === 'undefined') return;

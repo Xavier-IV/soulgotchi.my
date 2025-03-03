@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart2 } from 'lucide-react';
-import { vibrateMedium, vibratePattern } from '@/lib/haptics';
-import confetti from 'canvas-confetti';
+import { vibrateMedium } from '@/lib/haptics';
+import { useActivityStore } from '@/store/activityStore';
 import Big from 'big.js';
+import confetti from 'canvas-confetti';
 
 type PetMood = 'happy' | 'content' | 'sad' | 'hungry' | 'tired';
 
@@ -24,89 +25,61 @@ interface PetProps {
   emoji?: string;
 }
 
-// Counter animation component
+// Animated counter component
 function AnimatedCounter({ targetValue }: { targetValue: number }) {
-  const [displayValue, setDisplayValue] = useState(0);
-  const previousValueRef = useRef(0);
+  const [displayValue, setDisplayValue] = useState(targetValue);
+  const animationRef = useRef<number | undefined>(undefined);
+  const shouldAnimate = targetValue > 1000;
   
   useEffect(() => {
-    // Start with a small delay to make the animation more noticeable
-    const startDelay = setTimeout(() => {
-      // Always animate when the component mounts
-      // Start from zero for more visible animation
-      setDisplayValue(0);
-      
-      // Store the target value
-      previousValueRef.current = targetValue;
-      
-      // Create Big.js instance for target value
-      const bigTarget = new Big(targetValue);
-      
-      // Animate to target value - shorter duration to account for initial delay
-      const duration = 1800; // 1.8 seconds (total 2s with 200ms delay)
-      const interval = 20; // Update every 20ms for snappier animation
-      const steps = duration / interval;
-      
-      let currentStep = 0;
-      const timer = setInterval(() => {
-        currentStep++;
-        
-        if (currentStep >= steps) {
-          setDisplayValue(targetValue);
-          clearInterval(timer);
-        } else {
-          // Calculate progress with a custom easing function that slows down dramatically at the end
-          const progress = new Big(currentStep).div(steps);
-          
-          // Custom easing function - combination of easeOutQuint and easeOutExpo
-          // This will make it very slow at the end
-          let easedProgress;
-          if (progress.lt(0.5)) {
-            // easeOutQuint for first half: 16 * t^5
-            easedProgress = new Big(16).times(
-              progress.pow(5)
-            );
-          } else {
-            // easeOutExpo for second half: 1 - pow(-2t + 2, 5) / 2
-            easedProgress = new Big(1).minus(
-              new Big(-2).times(progress).plus(2).pow(5).div(2)
-            );
-          }
-          
-          // Apply additional slowdown for the last 10% of the animation
-          let finalProgress;
-          if (progress.gt(0.9)) {
-            // Slow down even more in the last 10%
-            finalProgress = easedProgress.times(0.95).plus(
-              progress.minus(0.9).times(0.5)
-            );
-          } else {
-            finalProgress = easedProgress;
-          }
-          
-          // Calculate the current value based on the eased progress
-          const currentValue = bigTarget.times(finalProgress).round(0, 0);
-          
-          // Set the display value, ensuring it doesn't exceed the target
-          setDisplayValue(Math.min(targetValue, currentValue.toNumber()));
-        }
-      }, interval);
-      
-      return () => clearInterval(timer);
-    }, 200); // 200ms delay before starting (reduced from 300ms)
+    // If value is 1000 or less, just set it directly without animation
+    if (!shouldAnimate) {
+      setDisplayValue(targetValue);
+      return;
+    }
     
-    return () => clearTimeout(startDelay);
-  }, [targetValue]);
+    const startValue = new Big(displayValue);
+    const endValue = new Big(targetValue);
+    const diff = endValue.minus(startValue);
+    const duration = 2000; // 2 seconds
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      
+      if (elapsed >= duration) {
+        setDisplayValue(targetValue);
+        return;
+      }
+      
+      // Easing function: easeOutExpo
+      const progress = 1 - Math.pow(2, -10 * elapsed / duration);
+      const currentValue = startValue.plus(diff.times(progress));
+      
+      setDisplayValue(Number(currentValue));
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    
+    animate();
+    
+    // Cleanup animation frame
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [targetValue, shouldAnimate]);
   
-  // Format the display value with leading zeros
-  const formattedValue = displayValue.toString().padStart(4, '0');
+  // Format the display value with leading zeros for consistent width
+  const formattedValue = Math.floor(displayValue).toString().padStart(4, '0');
   
   return (
-    <div className="font-mono font-semibold flex">
+    <div className="font-mono tabular-nums flex">
       {formattedValue.split('').map((digit, index) => (
         <div 
           key={index} 
-          className="w-6 text-center tabular-nums"
+          className="w-4 text-center"
         >
           {digit}
         </div>
@@ -255,6 +228,9 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
     );
   };
 
+  // Get prayer and dhikr state from activity store
+  const { prayerStatus, dhikrCounts, blockedDhikr } = useActivityStore();
+
   // Calculate progress towards goal
   const getProgressLabel = (value: number) => {
     const flooredValue = Math.floor(value);
@@ -269,49 +245,12 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
     return ""; // Default color
   };
 
-  // Mock data for dhikr and prayers
-  const dhikrData = [
-    { name: 'SubhanAllah', count: 1233, target: 33, completed: true, isBlocked: false },
-    { name: 'Alhamdulillah', count: 987, target: 33, completed: false, isBlocked: false },
-    { name: 'Allahu Akbar', count: 1542, target: 33, completed: false, isBlocked: false },
-    { name: 'Astaghfirullah', count: 456, target: 33, completed: true, isBlocked: false },
+  const dhikrList = [
+    { name: 'Subhanallah', translation: 'Glory be to Allah', benefit: 'Small boost to all stats + spirituality', target: 33 },
+    { name: 'Alhamdulillah', translation: 'Praise be to Allah', benefit: 'Small boost to all stats + happiness', target: 33 },
+    { name: 'Allahu Akbar', translation: 'Allah is the Greatest', benefit: 'Small boost to all stats + energy', target: 33 },
+    { name: 'Astaghfirullah', translation: 'I seek forgiveness from Allah', benefit: 'Small boost to all stats + health', target: 33 }
   ];
-
-  const prayerData = [
-    { name: 'Fajr', completed: true },
-    { name: 'Dhuhr', completed: true },
-    { name: 'Asr', completed: false },
-    { name: 'Maghrib', completed: false },
-    { name: 'Isha', completed: false },
-  ];
-
-  // State to track which dhikr is currently blocked
-  const [blockedDhikr, setBlockedDhikr] = useState<string | null>(null);
-
-  // Function to handle dhikr completion
-  const handleDhikrComplete = (dhikrName: string) => {
-    // If any dhikr is blocked, don't allow interaction
-    if (blockedDhikr !== null) return;
-    
-    // Set the dhikr as blocked
-    setBlockedDhikr(dhikrName);
-    
-    // Trigger strong haptic feedback for the "notch"
-    vibratePattern([100, 30, 100, 30, 100]); // Three strong vibrations with pauses
-    
-    // Show confetti for the achievement
-    confetti({
-      particleCount: 50,
-      spread: 70,
-      origin: { x: 0.5, y: 0.6 },
-      colors: ['#FFD700', '#FFA500', '#FF69B4', '#87CEEB', '#98FB98'],
-    });
-    
-    // Unblock after 2 seconds
-    setTimeout(() => {
-      setBlockedDhikr(null);
-    }, 2000);
-  };
 
   return (
     <Card className="w-full max-w-md mx-auto p-4 flex flex-col items-center justify-center gap-3">
@@ -399,23 +338,13 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
                     <TabsContent value="dhikr" className="space-y-3">
                       <div className="text-sm text-center mb-2">Today&apos;s Dhikr Progress</div>
                       <div className="space-y-2">
-                        {dhikrData.map((dhikr) => (
+                        {dhikrList.map((dhikr) => (
                           <div 
                             key={dhikr.name} 
-                            className={`p-3 rounded-md border ${blockedDhikr === dhikr.name ? 'bg-amber-500/20 border-amber-500' : 'bg-card/50'} flex items-center justify-between relative cursor-pointer`}
-                            onClick={() => handleDhikrComplete(dhikr.name)}
+                            className={`p-3 rounded-md border ${blockedDhikr === dhikr.name ? 'bg-amber-500/20 border-amber-500' : 'bg-card/50'} flex items-center justify-between relative`}
                           >
                             <div className="font-medium">{dhikr.name}</div>
-                            <AnimatedCounter targetValue={dhikr.count} />
-                            
-                            {blockedDhikr === dhikr.name && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
-                                <div className="text-center">
-                                  <div className="text-lg font-semibold text-amber-500">Set Complete!</div>
-                                  <div className="text-xs text-muted-foreground mt-1">Please wait...</div>
-                                </div>
-                              </div>
-                            )}
+                            <AnimatedCounter targetValue={dhikrCounts[dhikr.name] || 0} />
                           </div>
                         ))}
                       </div>
@@ -424,13 +353,13 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
                     <TabsContent value="prayer" className="space-y-2">
                       <div className="text-sm text-center mb-2">Today&apos;s Prayers</div>
                       <div className="grid grid-cols-5 gap-2">
-                        {prayerData.map((prayer) => (
+                        {Object.entries(prayerStatus).map(([prayer, completed]) => (
                           <div 
-                            key={prayer.name} 
-                            className={`text-center p-2 rounded-md border ${prayer.completed ? "bg-green-500/20 border-green-500" : "bg-muted/20 border-muted"}`}
+                            key={prayer} 
+                            className={`text-center p-2 rounded-md border ${completed ? "bg-green-500/20 border-green-500" : "bg-muted/20 border-muted"}`}
                           >
-                            <div className="text-xs font-medium">{prayer.name}</div>
-                            <div className="mt-1">{prayer.completed ? "✓" : "○"}</div>
+                            <div className="text-xs font-medium">{prayer}</div>
+                            <div className="mt-1">{completed ? "✓" : "○"}</div>
                           </div>
                         ))}
                       </div>

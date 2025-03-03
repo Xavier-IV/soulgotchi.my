@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { vibrate, vibratePattern } from '@/lib/haptics';
-import { savePrayerStatus, loadPrayerStatus } from '@/lib/storage';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
+import { useFocusStore } from '@/store/focusStore';
+import { useActivityStore } from '@/store/activityStore';
 
 interface ActionsProps {
   onPerformDhikr: (dhikrType: string) => void;
   onPray: () => void;
-  onRest: () => void;
   onLearn: () => void;
   dhikrCounts?: {
     [key: string]: number;
@@ -19,43 +19,37 @@ interface ActionsProps {
 export function Actions({ 
   onPerformDhikr, 
   onPray, 
-  onRest, 
-  onLearn, 
-  dhikrCounts = {} 
+  onLearn,
 }: ActionsProps) {
   const [activeTab, setActiveTab] = useState('dhikr');
-  const [lastAction, setLastAction] = useState<string | null>(null);
   const [showActionMessage, setShowActionMessage] = useState(false);
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [blockedDhikr, setBlockedDhikr] = useState<string | null>(null);
-  const [focusedDhikr, setFocusedDhikr] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [closeProgress, setCloseProgress] = useState(0);
   const [isHoldingClose, setIsHoldingClose] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
   const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [prayerStatus, setPrayerStatus] = useState<Record<string, boolean>>({
-    Fajr: false,
-    Dhuhr: false,
-    Asr: false,
-    Maghrib: false,
-    Isha: false,
-    Tahajjud: false
-  });
   
-  // Load prayer status on component mount
-  useEffect(() => {
-    const savedPrayerStatus = loadPrayerStatus();
-    if (savedPrayerStatus) {
-      setPrayerStatus(savedPrayerStatus);
-    }
-  }, []);
-  
-  // Save prayer status whenever it changes
-  useEffect(() => {
-    savePrayerStatus(prayerStatus);
-  }, [prayerStatus]);
+  // Get focus state from Zustand store
+  const { 
+    isDrawerOpen, 
+    focusedDhikr, 
+    isLocked,
+    setDrawerOpen,
+    setFocusedDhikr,
+    toggleLock
+  } = useFocusStore();
 
+  // Get activity state from Zustand store
+  const {
+    dhikrCounts,
+    prayerStatus,
+    blockedDhikr,
+    lastActionMessage,
+    performDhikr,
+    completePrayer,
+    setBlockedDhikr,
+    setLastActionMessage
+  } = useActivityStore();
+  
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -74,7 +68,7 @@ export function Actions({
 
   // Update action message and handle timeout
   const updateActionMessage = (message: string) => {
-    setLastAction(message);
+    setLastActionMessage(message);
     setShowActionMessage(true);
     
     // Clear any existing timeout
@@ -93,6 +87,7 @@ export function Actions({
     if (blockedDhikr !== null) return;
     
     vibrate();
+    performDhikr(dhikrType);
     onPerformDhikr(dhikrType);
     const count = (dhikrCounts[dhikrType] || 0) + 1;
     updateActionMessage(`Recited: ${dhikrType} (${count}x)`);
@@ -119,20 +114,11 @@ export function Actions({
     }
   };
   
-  const handlePray = (prayerName: string) => {
+  const handlePray = (prayerName: keyof typeof prayerStatus) => {
     vibrate();
     onPray();
-    setPrayerStatus(prev => ({
-      ...prev,
-      [prayerName]: true
-    }));
+    completePrayer(prayerName);
     updateActionMessage(`Completed ${prayerName} prayer`);
-  };
-  
-  const handleRest = () => {
-    vibrate();
-    onRest();
-    updateActionMessage('Rested and regained energy');
   };
   
   const handleLearn = (topic: string) => {
@@ -185,7 +171,7 @@ export function Actions({
       
       if (newProgress >= 100) {
         // Close the drawer when progress is complete
-        setIsDrawerOpen(false);
+        setDrawerOpen(false);
         setCloseProgress(0);
         setIsHoldingClose(false);
         clearInterval(closeTimerRef.current!);
@@ -214,19 +200,13 @@ export function Actions({
     };
   }, []);
 
-  // Toggle lock state
-  const toggleLock = () => {
-    vibrate();
-    setIsLocked(!isLocked);
-  };
-
   return (
     <Card className="w-full max-w-md mx-auto p-4">
       {/* Action message with fade effect */}
       <div className="h-8 mb-2 flex items-center justify-center">
-        {lastAction && (
+        {lastActionMessage && (
           <div className={`text-sm text-center transition-opacity duration-500 ${showActionMessage ? 'opacity-100' : 'opacity-0'}`}>
-            {lastAction}
+            {lastActionMessage}
           </div>
         )}
       </div>
@@ -237,17 +217,16 @@ export function Actions({
         value={activeTab}
         onValueChange={handleTabChange}
       >
-        <TabsList className="grid w-full grid-cols-4 h-9">
+        <TabsList className="grid w-full grid-cols-3 h-9">
           <TabsTrigger value="dhikr" className="text-xs">Dhikr</TabsTrigger>
           <TabsTrigger value="prayer" className="text-xs">Prayer</TabsTrigger>
-          <TabsTrigger value="rest" className="text-xs">Rest</TabsTrigger>
           <TabsTrigger value="learn" className="text-xs">Learn</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dhikr" className="mt-2 min-h-[180px]">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium">Perform Dhikr</h3>
-            <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+            <Drawer open={isDrawerOpen} onOpenChange={setDrawerOpen}>
               <DrawerTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 px-2">
                   <span className="mr-1">Focus</span>
@@ -432,32 +411,19 @@ export function Actions({
             The main source of nourishment for your soul
           </p>
           <div className="grid grid-cols-3 gap-2 mt-2">
-            {Object.keys(prayerStatus).map((prayer) => (
+            {Object.entries(prayerStatus).map(([prayer, completed]) => (
               <Button 
                 key={prayer}
-                variant={prayerStatus[prayer] ? "default" : "outline"} 
-                className={`h-12 ${prayerStatus[prayer] ? "bg-primary text-primary-foreground" : ""}`}
-                onClick={() => handlePray(prayer)}
+                variant={completed ? "default" : "outline"} 
+                className={`h-12 ${completed ? "bg-primary text-primary-foreground" : ""}`}
+                onClick={() => handlePray(prayer as keyof typeof prayerStatus)}
               >
                 {prayer}
-                {prayerStatus[prayer] && (
+                {completed && (
                   <span className="ml-1 text-xs">✓</span>
                 )}
               </Button>
             ))}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="rest" className="mt-2 min-h-[180px]">
-          <h3 className="text-sm font-medium text-center">Rest</h3>
-          <div className="flex justify-center mt-2">
-            <Button 
-              variant="outline" 
-              className="h-12 px-6"
-              onClick={handleRest}
-            >
-              Rest for a while
-            </Button>
           </div>
         </TabsContent>
         
