@@ -9,12 +9,20 @@ interface PetStats {
 }
 
 interface PetState {
+ 
   stats: PetStats;
   mood: 'happy' | 'content' | 'sad' | 'hungry' | 'tired';
   lastActivity: string | null;
   achievements: string[];
   isSetupComplete: boolean; 
-  
+  lastInteraction: Date | null;
+  details: {
+    name: string;
+    emoji: string;
+    age: number;
+    lastDecay: number;
+  };
+
   // Actions
   updateStats: (updates: Partial<PetStats>) => void;
   updateMood: (newMood: PetState['mood']) => void;
@@ -22,6 +30,8 @@ interface PetState {
   setLastActivity: (activity: string) => void;
   resetPet: () => void;
   setIsSetupComplete: (isComplete: boolean) => void;
+  setLastInteraction: (now: Date) => void;
+  setPetDetails: (details: { name: string; emoji: string; age: number; lastDecay: number }) => void;
 }
 
 const INITIAL_STATS: PetStats = {
@@ -39,8 +49,17 @@ export const usePetStore = create<PetState>()(
       lastActivity: null,
       achievements: [],
       isSetupComplete: true,
+      lastInteraction: null,
+      details: {
+        name: 'SoulGotchi',
+        emoji: '😌',
+        age: 0,
+        lastDecay: Date.now(),
+      },
 
       setIsSetupComplete: (isComplete) => set({ isSetupComplete: isComplete }),
+
+      setPetDetails: ({ name, emoji, age, lastDecay }) => set({ details: { name, emoji, age, lastDecay } }),
 
       updateStats: (updates) =>
         set((state) => ({
@@ -64,6 +83,8 @@ export const usePetStore = create<PetState>()(
       
       setLastActivity: (activity) => set({ lastActivity: activity }),
       
+      setLastInteraction: (now) => set({ lastInteraction: now }),
+
       resetPet: () =>
         set({
           stats: INITIAL_STATS,

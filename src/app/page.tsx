@@ -23,7 +23,7 @@ import {
 import { usePetState } from '@/hooks/usePetState';
 import { usePetStore } from '@/store/petStore';
 import { InfoIcon, TrophyIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Home() {
   const [petName, setPetName] = useState('SoulGotchi');
@@ -54,15 +54,15 @@ export default function Home() {
     if (petName.trim() === '') {
       setPetName('SoulGotchi');
     }
-    
-    actions.resetPet(petName);
+    console.log('Resetting pet 1');
+    actions.resetPet(petName, selectedEmoji);
     setIsSetupComplete(true);
   };
   
   // Handle pet death or reset
   const handleReset = () => {
     setIsSetupComplete(false);
-    console.log('Resetting pet');
+    console.log('Resetting pet 2');
     setPetName('SoulGotchi');
   };
 
@@ -140,6 +140,13 @@ export default function Home() {
       </ul>
     </div>
   );
+
+  useEffect(() => {
+    if (isSetupComplete) {
+      setPetName(petState.name);
+      setSelectedEmoji(petState.emoji);
+    }
+  }, [isSetupComplete, petState.name, petState.emoji]);
   
   // Setup screen
   if (!isSetupComplete) {
