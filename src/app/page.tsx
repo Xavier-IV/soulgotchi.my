@@ -14,12 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from '@/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { usePetState } from '@/hooks/usePetState';
 import { usePetStore } from '@/store/petStore';
 import { InfoIcon, TrophyIcon } from 'lucide-react';
@@ -29,6 +23,7 @@ export default function Home() {
   const [petName, setPetName] = useState('SoulGotchi');
   const [selectedEmoji, setSelectedEmoji] = useState('🥺');
   const [resetDrawerOpen, setResetDrawerOpen] = useState(false);
+  const [gameInfoDrawerOpen, setGameInfoDrawerOpen] = useState(false);
   const [resetProgress, setResetProgress] = useState(0);
   const [isHoldingReset, setIsHoldingReset] = useState(false);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -142,9 +137,9 @@ export default function Home() {
 
   // Game info tooltip content
   const gameInfoContent = (
-    <div className="max-w-xs space-y-1 text-xs text-white">
+    <div className="space-y-2">
       <h3 className="font-medium">How to Play SoulGotchi</h3>
-      <ul className="list-disc pl-3 space-y-0.5">
+      <ul className="list-disc pl-5 space-y-1 text-sm">
         <li>Perform Islamic practices to grow your pet&apos;s stats</li>
         <li>Each dhikr type provides different benefits</li>
         <li>Recite the same dhikr repeatedly for bonus effects</li>
@@ -355,19 +350,16 @@ export default function Home() {
               </DialogContent>
             </Dialog>
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <InfoIcon className="h-3 w-3" />
-                    <span className="sr-only">Game Info</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="end" className="bg-card border-border">
-                  {gameInfoContent}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Game Info Button - Opens Drawer */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6"
+              onClick={() => setGameInfoDrawerOpen(true)}
+            >
+              <InfoIcon className="h-3 w-3" />
+              <span className="sr-only">Game Info</span>
+            </Button>
           </div>
         </div>
         
@@ -433,6 +425,30 @@ export default function Home() {
               
               <Button variant="outline" onClick={() => setResetDrawerOpen(false)}>
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+      
+      {/* Game Info Drawer */}
+      <Drawer open={gameInfoDrawerOpen} onOpenChange={setGameInfoDrawerOpen}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>How to Play SoulGotchi</DrawerTitle>
+              <DrawerDescription>
+                Learn how to nurture your Islamic virtual pet
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="p-4">
+              {gameInfoContent}
+              <Button 
+                variant="outline" 
+                className="w-full mt-4" 
+                onClick={() => setGameInfoDrawerOpen(false)}
+              >
+                Close
               </Button>
             </div>
           </div>
