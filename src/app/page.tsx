@@ -87,41 +87,56 @@ export default function Home() {
   
   // Handle hold to reset
   const handleResetStart = () => {
+    console.log('Reset start');
+    // Set holding state first
     setIsHoldingReset(true);
     setResetProgress(0);
     
     // Clear any existing timer
     if (resetTimerRef.current) {
       clearInterval(resetTimerRef.current);
+      resetTimerRef.current = null;
     }
     
-    // Start a timer to increment progress
+    // Record start time
     const startTime = Date.now();
     const duration = 3000; // 3 seconds to hold
     
+    // Create new interval
     resetTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
+      const currentTime = Date.now();
+      const elapsed = currentTime - startTime;
       const newProgress = Math.min(100, (elapsed / duration) * 100);
+      
+      console.log(`Progress update: ${newProgress.toFixed(1)}%`);
       setResetProgress(newProgress);
       
+      // Check if complete
       if (newProgress >= 100) {
-        // Reset all data when progress is complete
-        handleResetAllData();
+        console.log('Reset complete, executing reset');
+        // Clear interval first
         clearInterval(resetTimerRef.current!);
+        resetTimerRef.current = null;
+        
+        // Then reset
+        handleResetAllData();
       }
-    }, 100);
+    }, 50); // Update more frequently for smoother animation
   };
   
   const handleResetEnd = () => {
-    setIsHoldingReset(false);
-    console.log('Resetting end');
-    setIsSetupComplete(false);
-    setResetProgress(0);
+    console.log('Reset end, progress was:', resetProgress);
     
-    // Clear the timer
-    if (resetTimerRef.current) {
-      clearInterval(resetTimerRef.current);
-      resetTimerRef.current = null;
+    // Only cancel if not complete
+    if (resetProgress < 100) {
+      setIsHoldingReset(false);
+      setResetProgress(0);
+      
+      // Clear the timer
+      if (resetTimerRef.current) {
+        clearInterval(resetTimerRef.current);
+        resetTimerRef.current = null;
+      }
     }
   };
 
@@ -398,12 +413,10 @@ export default function Home() {
               <Button 
                 variant="destructive" 
                 className="relative overflow-hidden"
-                onMouseDown={handleResetStart}
-                onMouseUp={handleResetEnd}
-                onMouseLeave={handleResetEnd}
-                onTouchStart={handleResetStart}
-                onTouchEnd={handleResetEnd}
-                onTouchCancel={handleResetEnd}
+                onPointerDown={handleResetStart}
+                onPointerUp={handleResetEnd}
+                onPointerLeave={handleResetEnd}
+                onPointerCancel={handleResetEnd}
               >
                 <span className="relative z-10 flex items-center justify-center">
                   {isHoldingReset 

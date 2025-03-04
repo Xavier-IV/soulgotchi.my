@@ -94,6 +94,7 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
   const [mood, setMood] = useState<PetMood>('content');
   const [localTimer, setLocalTimer] = useState(timeUntilDecay);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
 
   // Trigger confetti when mood improves
   const celebrateMoodImprovement = (newMood: PetMood, prevMood: PetMood) => {
@@ -186,6 +187,11 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
     }
   }, [timeUntilDecay]);
 
+  // Only show timer on client-side to prevent hydration mismatch
+  useEffect(() => {
+    setShowTimer(true);
+  }, []);
+
   // Determine pet mood based on stats
   useEffect(() => {
     const newMood = (() => {
@@ -262,7 +268,7 @@ export function Pet({ health, spirituality, energy, happiness, timeUntilDecay = 
         </Badge>
         
         <div className="flex items-center gap-2">
-          {localTimer > 0 && (
+          {showTimer && localTimer > 0 && (
             <Badge variant="outline" className="text-xs bg-yellow-500/10">
               Decay: {localTimer}s
             </Badge>
