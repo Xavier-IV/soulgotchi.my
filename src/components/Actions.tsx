@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { vibrate, vibratePattern } from '@/lib/haptics';
+import { playClickSound, playCompletionSound, resumeAudioContext } from '@/lib/sounds';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { useFocusStore } from '@/store/focusStore';
 import { useActivityStore } from '@/store/activityStore';
 import { usePetStore } from '@/store/petStore';
+import { useSoundStore } from '@/store/soundStore';
 
 interface ActionsProps {
   onPray: () => void;
@@ -28,6 +30,8 @@ export function Actions({
   const [lastClickedDhikr, setLastClickedDhikr] = useState<string | null>(null);
   const [isLockFlashing, setIsLockFlashing] = useState(false);
   const lockFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isProcessingDhikr, setIsProcessingDhikr] = useState(false);
+  const dhikrDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Get focus state from Zustand store
   const { 
@@ -51,6 +55,9 @@ export function Actions({
     setLastActionMessage
   } = useActivityStore();
   
+  // Get sound state from Zustand store
+  const { isMuted, toggleMute } = useSoundStore();
+  
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -63,7 +70,16 @@ export function Actions({
       if (lockFlashTimeoutRef.current) {
         clearTimeout(lockFlashTimeoutRef.current);
       }
+      if (dhikrDebounceTimeoutRef.current) {
+        clearTimeout(dhikrDebounceTimeoutRef.current);
+      }
     };
+  }, []);
+  
+  // Initialize audio context on first user interaction
+  useEffect(() => {
+    // Resume audio context on component mount to ensure it's ready
+    resumeAudioContext();
   }, []);
   
   const dhikrList = [
@@ -90,13 +106,20 @@ export function Actions({
   };
   
   const handleDhikr = (dhikrType: string) => {
-    // If any dhikr is blocked, don't allow interaction
-    if (blockedDhikr !== null) return;
+    // If any dhikr is blocked or we're currently processing a dhikr, don't allow interaction
+    if (blockedDhikr !== null || isProcessingDhikr) return;
+    
+    // Set processing flag to prevent multiple rapid clicks
+    setIsProcessingDhikr(true);
     
     // Set this as the last clicked dhikr
     setLastClickedDhikr(dhikrType);
     
+    // Play click sound and vibrate
+    playClickSound();
     vibrate();
+    
+    // Perform the dhikr action
     performDhikr(dhikrType);
     const count = (dhikrCounts[dhikrType] || 0) + 1;
     updateActionMessage(`Recited: ${dhikrType} (${count}x)`);
@@ -106,13 +129,27 @@ export function Actions({
       // Block this dhikr type
       setBlockedDhikr(dhikrType);
       
-      // Trigger pattern vibration for set completion
+      // Play completion sound and trigger pattern vibration
+      playCompletionSound();
       vibratePattern([100, 30, 100, 30, 100]); // Three vibrations with pauses
       
       // Unblock after 2 seconds
       setTimeout(() => {
         setBlockedDhikr(null);
+        setIsProcessingDhikr(false);
       }, 2000);
+    } else {
+      // For regular dhikr, add a small debounce to prevent accidental double-clicks
+      // Clear any existing timeout
+      if (dhikrDebounceTimeoutRef.current) {
+        clearTimeout(dhikrDebounceTimeoutRef.current);
+      }
+      
+      // Set a new timeout to reset the processing flag
+      dhikrDebounceTimeoutRef.current = setTimeout(() => {
+        setIsProcessingDhikr(false);
+        dhikrDebounceTimeoutRef.current = null;
+      }, 300); // 300ms debounce should be enough to prevent accidental double clicks
     }
   };
   
@@ -124,6 +161,7 @@ export function Actions({
   };
   
   const handlePray = (prayerName: keyof typeof prayerStatus) => {
+    playClickSound();
     vibrate();
     
     // Check if prayer is already completed
@@ -158,12 +196,14 @@ export function Actions({
   };
   
   const handleLearn = (topic: string) => {
+    playClickSound();
     vibrate();
     onLearn();
     updateActionMessage(`Studied: ${topic}`);
   };
   
   const handleTabChange = (value: string) => {
+    playClickSound();
     vibrate();
     setActiveTab(value);
   };
@@ -231,6 +271,7 @@ export function Actions({
   const handleLockFlash = () => {
     if (isLocked) {
       setIsLockFlashing(true);
+      playClickSound();
       vibrate();
       
       // Clear any existing timeout
@@ -349,150 +390,171 @@ export function Actions({
         <TabsContent value="dhikr" className="mt-2 min-h-[180px]">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium">Perform Dhikr</h3>
-            <Drawer 
-              open={isDrawerOpen} 
-              onOpenChange={handleDrawerOpenChange}
-              dismissible={!isLocked}
-            >
-              <DrawerTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 px-2"
-                  onClick={handleOpenFocusDrawer}
-                >
-                  <span className="mr-1">Focus</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-target"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent data-vaul-no-drag={isLocked ? true : undefined}>
-                <DrawerHeader className="relative">
-                  {focusedDhikr && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                      onClick={() => isLocked ? handleLockFlash() : setFocusedDhikr(null)}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
-                    </Button>
-                  )}
-                  <DrawerTitle className="text-center">Focus Mode</DrawerTitle>
-                  {focusedDhikr && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 transition-all ${isLockFlashing ? 'animate-pulse bg-amber-500/20' : ''}`}
-                      onClick={toggleLock}
-                    >
-                      {isLocked ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-lock ${isLockFlashing ? 'text-amber-600' : 'text-amber-500'}`}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock-open"><path d="M7 11V7a5 5 0 0 1 9.9-1"/><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/></svg>
-                      )}
-                    </Button>
-                  )}
-                </DrawerHeader>
-                
-                <div className="p-4 flex flex-col items-center">
-                  {focusedDhikr ? (
-                    <>
-                      <div className="text-center mb-4">
-                        <div className="text-lg font-medium">{focusedDhikr}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {dhikrList.find(d => d.name === focusedDhikr)?.translation}
-                        </div>
-                      </div>
-                      
-                      <div className="text-4xl font-bold mb-6">
-                        {dhikrCounts[focusedDhikr] || 0}
-                      </div>
-                      
+            <div className="flex items-center gap-2">
+              {/* Mute Button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 px-2"
+                onClick={() => {
+                  toggleMute();
+                  vibrate();
+                  updateActionMessage(isMuted ? "Sound enabled" : "Sound muted");
+                }}
+              >
+                {isMuted ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-volume-x"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-volume-2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                )}
+              </Button>
+              
+              {/* Focus Button */}
+              <Drawer 
+                open={isDrawerOpen} 
+                onOpenChange={handleDrawerOpenChange}
+                dismissible={!isLocked}
+              >
+                <DrawerTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 px-2"
+                    onClick={handleOpenFocusDrawer}
+                  >
+                    <span className="mr-1">Focus</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-target"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent data-vaul-no-drag={isLocked ? true : undefined}>
+                  <DrawerHeader className="relative">
+                    {focusedDhikr && (
                       <Button 
-                        size="lg" 
-                        className="w-full h-32 text-xl"
-                        onClick={handleFocusedDhikr}
-                        disabled={blockedDhikr === focusedDhikr}
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                        onClick={() => isLocked ? handleLockFlash() : setFocusedDhikr(null)}
                       >
-                        {focusedDhikr}
-                        
-                        {blockedDhikr === focusedDhikr && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
-                            <div className="text-center">
-                              <div className="text-lg font-semibold text-amber-500">Set Complete!</div>
-                              <div className="text-xs text-muted-foreground mt-1">Please wait...</div>
-                            </div>
-                          </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
+                      </Button>
+                    )}
+                    <DrawerTitle className="text-center">Focus Mode</DrawerTitle>
+                    {focusedDhikr && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 transition-all ${isLockFlashing ? 'animate-pulse bg-amber-500/20' : ''}`}
+                        onClick={toggleLock}
+                      >
+                        {isLocked ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`lucide lucide-lock ${isLockFlashing ? 'text-amber-600' : 'text-amber-500'}`}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock-open"><path d="M7 11V7a5 5 0 0 1 9.9-1"/><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/></svg>
                         )}
                       </Button>
-                      
-                      <div className="mt-4 text-sm">
-                        <span className="font-medium">Current set: </span>
-                        <span>{(dhikrCounts[focusedDhikr] || 0) % 33}/{dhikrList.find(d => d.name === focusedDhikr)?.target}</span>
-                      </div>
-                      
-                      <div className="mt-6 w-full">
-                        <div 
-                          className="relative w-full overflow-hidden rounded-md"
-                          onMouseDown={!isLocked ? handleCloseStart : handleLockFlash}
-                          onMouseUp={!isLocked ? handleCloseEnd : undefined}
-                          onMouseLeave={!isLocked ? handleCloseEnd : undefined}
-                          onTouchStart={!isLocked ? handleCloseStart : handleLockFlash}
-                          onTouchEnd={!isLocked ? handleCloseEnd : undefined}
-                          onTouchCancel={!isLocked ? handleCloseEnd : undefined}
+                    )}
+                  </DrawerHeader>
+                  
+                  <div className="p-4 flex flex-col items-center">
+                    {focusedDhikr ? (
+                      <>
+                        <div className="text-center mb-4">
+                          <div className="text-lg font-medium">{focusedDhikr}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {dhikrList.find(d => d.name === focusedDhikr)?.translation}
+                          </div>
+                        </div>
+                        
+                        <div className="text-4xl font-bold mb-6">
+                          {dhikrCounts[focusedDhikr] || 0}
+                        </div>
+                        
+                        <Button 
+                          size="lg" 
+                          className="w-full h-32 text-xl"
+                          onClick={handleFocusedDhikr}
+                          disabled={blockedDhikr === focusedDhikr}
                         >
-                          <Button 
-                            variant="outline" 
-                            className="w-full relative"
-                            disabled={isLocked}
-                            onClick={isLocked ? handleLockFlash : undefined}
+                          {focusedDhikr}
+                          
+                          {blockedDhikr === focusedDhikr && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
+                              <div className="text-center">
+                                <div className="text-lg font-semibold text-amber-500">Set Complete!</div>
+                                <div className="text-xs text-muted-foreground mt-1">Please wait...</div>
+                              </div>
+                            </div>
+                          )}
+                        </Button>
+                        
+                        <div className="mt-4 text-sm">
+                          <span className="font-medium">Current set: </span>
+                          <span>{(dhikrCounts[focusedDhikr] || 0) % 33}/{dhikrList.find(d => d.name === focusedDhikr)?.target}</span>
+                        </div>
+                        
+                        <div className="mt-6 w-full">
+                          <div 
+                            className="relative w-full overflow-hidden rounded-md"
+                            onMouseDown={!isLocked ? handleCloseStart : handleLockFlash}
+                            onMouseUp={!isLocked ? handleCloseEnd : undefined}
+                            onMouseLeave={!isLocked ? handleCloseEnd : undefined}
+                            onTouchStart={!isLocked ? handleCloseStart : handleLockFlash}
+                            onTouchEnd={!isLocked ? handleCloseEnd : undefined}
+                            onTouchCancel={!isLocked ? handleCloseEnd : undefined}
                           >
-                            <span className="relative z-10 flex items-center justify-center">
-                              {isLocked && (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock mr-2 text-amber-500"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                              )}
-                              {isHoldingClose 
-                                ? `Hold to close (${Math.round(closeProgress)}%)` 
-                                : isLocked ? 'Locked' : 'Hold to close Focus Mode'}
-                            </span>
-                            
-                            {/* Progress overlay */}
-                            <div 
-                              className="absolute left-0 top-0 bottom-0 bg-primary/20 transition-all"
-                              style={{ width: `${closeProgress}%` }}
-                            />
-                          </Button>
+                            <Button 
+                              variant="outline" 
+                              className="w-full relative"
+                              disabled={isLocked}
+                              onClick={isLocked ? handleLockFlash : undefined}
+                            >
+                              <span className="relative z-10 flex items-center justify-center">
+                                {isLocked && (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock mr-2 text-amber-500"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                )}
+                                {isHoldingClose 
+                                  ? `Hold to close (${Math.round(closeProgress)}%)` 
+                                  : isLocked ? 'Locked' : 'Hold to close Focus Mode'}
+                              </span>
+                              
+                              {/* Progress overlay */}
+                              <div 
+                                className="absolute left-0 top-0 bottom-0 bg-primary/20 transition-all"
+                                style={{ width: `${closeProgress}%` }}
+                              />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {/* Keyboard shortcut hint for focus mode - hidden on mobile */}
+                        <div className="mt-3 text-xs text-center text-muted-foreground hidden sm:block">
+                          Press <kbd className="px-1 py-0.5 mx-1 bg-muted rounded border border-border">Space</kbd> to recite
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-4 space-y-4">
+                        <p className="text-center text-sm text-muted-foreground mb-2">Select a dhikr to focus on:</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {dhikrList.map((dhikr) => (
+                            <Button 
+                              key={dhikr.name}
+                              variant="outline"
+                              className="justify-start h-auto py-3"
+                              onClick={() => setFocusedDhikr(dhikr.name)}
+                            >
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">{dhikr.name}</span>
+                                <span className="text-xs text-muted-foreground">{dhikr.translation}</span>
+                              </div>
+                            </Button>
+                          ))}
                         </div>
                       </div>
-                      
-                      {/* Keyboard shortcut hint for focus mode - hidden on mobile */}
-                      <div className="mt-3 text-xs text-center text-muted-foreground hidden sm:block">
-                        Press <kbd className="px-1 py-0.5 mx-1 bg-muted rounded border border-border">Space</kbd> to recite
-                      </div>
-                    </>
-                  ) : (
-                    <div className="p-4 space-y-4">
-                      <p className="text-center text-sm text-muted-foreground mb-2">Select a dhikr to focus on:</p>
-                      <div className="grid grid-cols-1 gap-2">
-                        {dhikrList.map((dhikr) => (
-                          <Button 
-                            key={dhikr.name}
-                            variant="outline"
-                            className="justify-start h-auto py-3"
-                            onClick={() => setFocusedDhikr(dhikr.name)}
-                          >
-                            <div className="flex flex-col items-start">
-                              <span className="font-medium">{dhikr.name}</span>
-                              <span className="text-xs text-muted-foreground">{dhikr.translation}</span>
-                            </div>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </DrawerContent>
-            </Drawer>
+                    )}
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </div>
           </div>
           
           <p className="text-xs text-center text-muted-foreground mb-2">
