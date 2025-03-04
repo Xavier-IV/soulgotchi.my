@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import { savePetState, saveLastInteraction } from '@/lib/storage';
 import { useActivityStore } from '@/store/activityStore';
 import { usePetStore } from '@/store/petStore';
+import { useEffect, useState } from 'react';
 
 interface BasePetState {
   age: number;
@@ -91,25 +90,6 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     };
   }, [isAlive, petState.lastDecay, petStore]);
 
-  // Save pet state whenever it changes
-  useEffect(() => {
-    const fullState: ExtendedPetState = {
-      ...petState,
-      ...petStore.stats
-    };
-    savePetState(fullState);
-    
-    // Check if pet is still alive
-    const currentStats = petStore.stats;
-    if (currentStats.health <= 0 || currentStats.spirituality <= 0) {
-      setIsAlive(false);
-    }
-  }, [petState, petStore.stats]);
-
-  // Save last interaction time
-  useEffect(() => {
-    saveLastInteraction(lastInteraction);
-  }, [lastInteraction]);
 
   // Actions to interact with the pet
   const performDhikr = (dhikrType: string = 'Subhanallah') => {
@@ -183,13 +163,13 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     const now = new Date();
     setLastInteraction(now);
     
-    petStore.resetPet();
-    setPetState({
-      age: 0,
-      name: newName,
-      emoji: initialEmoji,
-      lastDecay: Date.now()
-    });
+    // petStore.resetPet();
+    // setPetState({
+    //   age: 0,
+    //   name: newName,
+    //   emoji: initialEmoji,
+    //   lastDecay: Date.now()
+    // });
     setIsAlive(true);
   };
 

@@ -142,8 +142,13 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
   body {
     @apply bg-background text-foreground;
+    touch-action: manipulation;
   }
 }

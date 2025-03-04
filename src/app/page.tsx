@@ -1,19 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { Pet } from '@/components/Pet';
 import { Actions } from '@/components/Actions';
+import { Pet } from '@/components/Pet';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { usePetState } from '@/hooks/usePetState';
-import { loadPetState } from '@/lib/storage';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -22,17 +12,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { InfoIcon, TrophyIcon } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { usePetState } from '@/hooks/usePetState';
+import { usePetStore } from '@/store/petStore';
+import { InfoIcon, TrophyIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 export default function Home() {
   const [petName, setPetName] = useState('SoulGotchi');
-  const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState('🥺');
   const [resetDrawerOpen, setResetDrawerOpen] = useState(false);
   const [resetProgress, setResetProgress] = useState(0);
   const [isHoldingReset, setIsHoldingReset] = useState(false);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { isSetupComplete, setIsSetupComplete } = usePetStore();
   
   const emojiOptions = [
     { emoji: '🥺', description: 'Pleading' },
@@ -48,16 +48,6 @@ export default function Home() {
   // Initialize pet state from storage or with default values
   const { petState, isAlive, timeUntilDecay, actions } = usePetState(petName);
   
-  // Load saved state on initial render
-  useEffect(() => {
-    const savedPet = loadPetState();
-    
-    if (savedPet) {
-      setPetName(savedPet.name);
-      actions.resetPet(savedPet.name);
-      setIsSetupComplete(true);
-    }
-  }, []);
   
   // Handle pet setup
   const handleSetupPet = () => {
@@ -72,6 +62,7 @@ export default function Home() {
   // Handle pet death or reset
   const handleReset = () => {
     setIsSetupComplete(false);
+    console.log('Resetting pet');
     setPetName('SoulGotchi');
   };
 
@@ -89,7 +80,7 @@ export default function Home() {
     // Reset the progress
     setResetProgress(0);
     setIsHoldingReset(false);
-    
+    setIsSetupComplete(false); 
     // Reload the page to ensure all stores are reset
     window.location.reload();
   };
@@ -123,6 +114,8 @@ export default function Home() {
   
   const handleResetEnd = () => {
     setIsHoldingReset(false);
+    console.log('Resetting end');
+    setIsSetupComplete(false);
     setResetProgress(0);
     
     // Clear the timer

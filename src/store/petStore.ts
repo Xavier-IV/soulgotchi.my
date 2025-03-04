@@ -13,6 +13,7 @@ interface PetState {
   mood: 'happy' | 'content' | 'sad' | 'hungry' | 'tired';
   lastActivity: string | null;
   achievements: string[];
+  isSetupComplete: boolean; 
   
   // Actions
   updateStats: (updates: Partial<PetStats>) => void;
@@ -20,6 +21,7 @@ interface PetState {
   addAchievement: (achievement: string) => void;
   setLastActivity: (activity: string) => void;
   resetPet: () => void;
+  setIsSetupComplete: (isComplete: boolean) => void;
 }
 
 const INITIAL_STATS: PetStats = {
@@ -36,7 +38,10 @@ export const usePetStore = create<PetState>()(
       mood: 'content',
       lastActivity: null,
       achievements: [],
-      
+      isSetupComplete: true,
+
+      setIsSetupComplete: (isComplete) => set({ isSetupComplete: isComplete }),
+
       updateStats: (updates) =>
         set((state) => ({
           stats: {
