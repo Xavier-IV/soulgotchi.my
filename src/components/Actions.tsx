@@ -8,6 +8,7 @@ import { vibrate, vibratePattern } from '@/lib/haptics';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import { useFocusStore } from '@/store/focusStore';
 import { useActivityStore } from '@/store/activityStore';
+import { usePetStore } from '@/store/petStore';
 
 interface ActionsProps {
   onPray: () => void;
@@ -124,9 +125,36 @@ export function Actions({
   
   const handlePray = (prayerName: keyof typeof prayerStatus) => {
     vibrate();
-    onPray();
-    completePrayer(prayerName);
-    updateActionMessage(`Completed ${prayerName} prayer`);
+    
+    // Check if prayer is already completed
+    if (prayerStatus[prayerName]) {
+      // Reverse the stat changes
+      const petStore = usePetStore.getState();
+      const currentStats = petStore.stats;
+      
+      petStore.updateStats({
+        spirituality: Math.max(0, currentStats.spirituality - 15),
+        happiness: Math.max(0, currentStats.happiness - 10),
+        energy: Math.max(0, currentStats.energy - 8),
+        health: Math.max(0, currentStats.health - 8),
+      });
+      
+      // Toggle prayer off (undo) - use the store's methods
+      useActivityStore.setState((state) => ({
+        ...state,
+        prayerStatus: {
+          ...state.prayerStatus,
+          [prayerName]: false
+        }
+      }));
+      
+      updateActionMessage(`Unmarked ${prayerName} prayer`);
+    } else {
+      // Complete the prayer
+      onPray();
+      completePrayer(prayerName);
+      updateActionMessage(`Completed ${prayerName} prayer`);
+    }
   };
   
   const handleLearn = (topic: string) => {
@@ -538,6 +566,7 @@ export function Actions({
                 variant={completed ? "default" : "outline"} 
                 className={`h-12 ${completed ? "bg-primary text-primary-foreground" : ""}`}
                 onClick={() => handlePray(prayer as keyof typeof prayerStatus)}
+                aria-label={completed ? `Unmark ${prayer} prayer` : `Complete ${prayer} prayer`}
               >
                 {prayer}
                 {completed && (
