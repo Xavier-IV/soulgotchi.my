@@ -23,10 +23,10 @@ interface PetState {
 }
 
 const INITIAL_STATS: PetStats = {
-  health: 50,
-  spirituality: 50,
-  energy: 50,
-  happiness: 50,
+  health: 20,
+  spirituality: 20,
+  energy: 20,
+  happiness: 20,
 };
 
 export const usePetStore = create<PetState>()(

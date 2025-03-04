@@ -53,6 +53,7 @@ export const useActivityStore = create<ActivityState>()(
           
           // Update pet stats based on dhikr completion
           const petStore = usePetStore.getState();
+          const currentStats = petStore.stats;
           
           // Small balanced increases for each dhikr
           let spiritualityIncrease = 0.5;
@@ -101,12 +102,12 @@ export const useActivityStore = create<ActivityState>()(
             }
           }
           
-          // Update pet stats
+          // Update pet stats with new values
           petStore.updateStats({
-            spirituality: petStore.stats.spirituality + spiritualityIncrease,
-            happiness: petStore.stats.happiness + happinessIncrease,
-            energy: petStore.stats.energy + energyIncrease,
-            health: petStore.stats.health + healthIncrease,
+            spirituality: Math.min(100, currentStats.spirituality + spiritualityIncrease),
+            happiness: Math.min(100, currentStats.happiness + happinessIncrease),
+            energy: Math.min(100, currentStats.energy + energyIncrease),
+            health: Math.min(100, currentStats.health + healthIncrease),
           });
           
           return {
@@ -122,14 +123,17 @@ export const useActivityStore = create<ActivityState>()(
         set((state) => {
           // Update pet stats for prayer completion
           const petStore = usePetStore.getState();
+          const currentStats = petStore.stats;
+          
           petStore.updateStats({
-            spirituality: petStore.stats.spirituality + 15,
-            happiness: petStore.stats.happiness + 10,
-            energy: petStore.stats.energy + 8,
-            health: petStore.stats.health + 8,
+            spirituality: Math.min(100, currentStats.spirituality + 15),
+            happiness: Math.min(100, currentStats.happiness + 10),
+            energy: Math.min(100, currentStats.energy + 8),
+            health: Math.min(100, currentStats.health + 8),
           });
           
           return {
+            ...state,
             prayerStatus: {
               ...state.prayerStatus,
               [prayerName]: true,

@@ -1,24 +1,24 @@
 import { useState, useEffect } from 'react';
 import { savePetState, saveLastInteraction } from '@/lib/storage';
 import { useActivityStore } from '@/store/activityStore';
+import { usePetStore } from '@/store/petStore';
 
-interface PetState {
-  health: number;
-  spirituality: number;
-  energy: number;
-  happiness: number;
+interface BasePetState {
   age: number;
   name: string;
   emoji: string;
   lastDecay: number;
 }
 
+interface ExtendedPetState extends BasePetState {
+  health: number;
+  spirituality: number;
+  energy: number;
+  happiness: number;
+}
+
 export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: string = '😌') {
-  const [petState, setPetState] = useState<PetState>({
-    health: 20,
-    spirituality: 20,
-    energy: 20,
-    happiness: 20,
+  const [petState, setPetState] = useState<BasePetState>({
     age: 0,
     name: initialName,
     emoji: initialEmoji,
@@ -29,8 +29,9 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
   const [isAlive, setIsAlive] = useState<boolean>(true);
   const [decayTimer, setDecayTimer] = useState<NodeJS.Timeout | null>(null);
   
-  // Get activity store actions
+  // Get activity store actions and pet store
   const { performDhikr: activityPerformDhikr } = useActivityStore();
+  const petStore = usePetStore();
 
   // Increase age over time
   useEffect(() => {
@@ -57,28 +58,30 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
 
     // Set up a new decay timer
     const timer = setInterval(() => {
-      setPetState((prev) => {
-        const now = Date.now();
-        const timeSinceLastDecay = now - prev.lastDecay;
-        
-        // Only decay if enough time has passed (10 seconds)
-        if (timeSinceLastDecay < 10000) {
-          return prev;
-        }
+      const now = Date.now();
+      const timeSinceLastDecay = now - petState.lastDecay;
+      
+      // Only decay if enough time has passed (10 seconds)
+      if (timeSinceLastDecay < 10000) {
+        return;
+      }
 
-        // Calculate decay amount - small but noticeable
-        const decayAmount = 1;
+      // Calculate decay amount - small but noticeable
+      const decayAmount = 1;
+      const currentStats = petStore.stats;
 
-        // Apply decay to all stats
-        return {
-          ...prev,
-          health: Math.max(0, prev.health - decayAmount),
-          spirituality: Math.max(0, prev.spirituality - decayAmount),
-          energy: Math.max(0, prev.energy - decayAmount),
-          happiness: Math.max(0, prev.happiness - decayAmount),
-          lastDecay: now
-        };
+      // Apply decay to all stats
+      petStore.updateStats({
+        health: Math.max(0, currentStats.health - decayAmount),
+        spirituality: Math.max(0, currentStats.spirituality - decayAmount),
+        energy: Math.max(0, currentStats.energy - decayAmount),
+        happiness: Math.max(0, currentStats.happiness - decayAmount),
       });
+
+      setPetState(prev => ({
+        ...prev,
+        lastDecay: now
+      }));
     }, 5000); // Check every 5 seconds
 
     setDecayTimer(timer);
@@ -86,17 +89,22 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isAlive]);
+  }, [isAlive, petState.lastDecay, petStore]);
 
   // Save pet state whenever it changes
   useEffect(() => {
-    savePetState(petState);
+    const fullState: ExtendedPetState = {
+      ...petState,
+      ...petStore.stats
+    };
+    savePetState(fullState);
     
     // Check if pet is still alive
-    if (petState.health <= 0 || petState.spirituality <= 0) {
+    const currentStats = petStore.stats;
+    if (currentStats.health <= 0 || currentStats.spirituality <= 0) {
       setIsAlive(false);
     }
-  }, [petState]);
+  }, [petState, petStore.stats]);
 
   // Save last interaction time
   useEffect(() => {
@@ -120,17 +128,18 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     const now = new Date();
     setLastInteraction(now);
     
-    setPetState((prev) => {
-      const newState = {
-        ...prev,
-        spirituality: Math.min(100, prev.spirituality + 15), // Primary benefit
-        happiness: Math.min(100, prev.happiness + 10),
-        energy: Math.min(100, prev.energy + 8),
-        health: Math.min(100, prev.health + 8),
-        lastDecay: Date.now() // Reset decay timer when interacting
-      };
-      return newState;
+    const currentStats = petStore.stats;
+    petStore.updateStats({
+      spirituality: Math.min(100, currentStats.spirituality + 15),
+      happiness: Math.min(100, currentStats.happiness + 10),
+      energy: Math.min(100, currentStats.energy + 8),
+      health: Math.min(100, currentStats.health + 8),
     });
+    
+    setPetState(prev => ({
+      ...prev,
+      lastDecay: Date.now()
+    }));
   };
 
   const rest = () => {
@@ -139,15 +148,16 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     const now = new Date();
     setLastInteraction(now);
     
-    setPetState((prev) => {
-      const newState = {
-        ...prev,
-        energy: Math.min(100, prev.energy + 20),
-        health: Math.min(100, prev.health + 5),
-        lastDecay: Date.now() // Reset decay timer when interacting
-      };
-      return newState;
+    const currentStats = petStore.stats;
+    petStore.updateStats({
+      energy: Math.min(100, currentStats.energy + 20),
+      health: Math.min(100, currentStats.health + 5),
     });
+    
+    setPetState(prev => ({
+      ...prev,
+      lastDecay: Date.now()
+    }));
   };
 
   const learn = () => {
@@ -156,28 +166,25 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
     const now = new Date();
     setLastInteraction(now);
     
-    setPetState((prev) => {
-      const newState = {
-        ...prev,
-        spirituality: Math.min(100, prev.spirituality + 5), // Reduced from 10 to 5
-        happiness: Math.min(100, prev.happiness + 5),
-        // Learning still takes energy
-        energy: Math.max(0, prev.energy - 5),
-        lastDecay: Date.now() // Reset decay timer when interacting
-      };
-      return newState;
+    const currentStats = petStore.stats;
+    petStore.updateStats({
+      spirituality: Math.min(100, currentStats.spirituality + 5),
+      happiness: Math.min(100, currentStats.happiness + 5),
+      energy: Math.max(0, currentStats.energy - 5),
     });
+    
+    setPetState(prev => ({
+      ...prev,
+      lastDecay: Date.now()
+    }));
   };
 
   const resetPet = (newName: string = initialName) => {
     const now = new Date();
     setLastInteraction(now);
     
+    petStore.resetPet();
     setPetState({
-      health: 20,
-      spirituality: 20,
-      energy: 20,
-      happiness: 20,
       age: 0,
       name: newName,
       emoji: initialEmoji,
@@ -195,7 +202,10 @@ export function usePetState(initialName: string = 'SoulGotchi', initialEmoji: st
   };
 
   return {
-    petState,
+    petState: {
+      ...petState,
+      ...petStore.stats,
+    } as ExtendedPetState,
     isAlive,
     timeUntilDecay: getTimeUntilNextDecay(),
     actions: {
